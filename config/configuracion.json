@@ -1,0 +1,26 @@
+{
+    "fuente_datos": {
+        "tipo": "mysql",
+        "mysql": {
+            "servidor": "localhost",
+            "puerto": 3306,
+            "base_datos": "sistema_draj",
+            "usuario": "root",
+            "password": ""
+        }
+    },
+    "asistencia": {
+        "horario": {
+            "hora_entrada": "08:00",
+            "hora_salida": "02:00"
+        },
+        "tolerancia": {
+            "minutos_entrada": 5
+        },
+        "reglas": {
+            "primera_marcacion_es_entrada": true,
+            "ultima_marcacion_es_salida": true,
+            "generar_salida_si_solo_hay_una_marcacion": false
+        }
+    }
+}
