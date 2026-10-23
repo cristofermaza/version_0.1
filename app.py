@@ -25,7 +25,7 @@ if gestor_fuentes.fuente_actual:
     if gestor_fuentes.conectar():
 
         print("CONEXION EXITOSA")
-        print("PASO 1: conexión lista")
+
 
     else:
 
@@ -37,7 +37,7 @@ else:
     print("NO HAY FUENTE DE DATOS CONFIGURADA")
 
 
-print("PASO 2: intentando crear VentanaPrincipal")
+
 
 try:
 
@@ -46,7 +46,7 @@ try:
         gestor_configuracion
     )
 
-    print("PASO 3: VentanaPrincipal creada")
+
 
 except Exception as error:
 
@@ -61,13 +61,13 @@ except Exception as error:
     sys.exit(1)
 
 
-print("PASO 4: intentando mostrar ventana")
+
 
 try:
 
     ventana.show()
 
-    print("PASO 5: ventana mostrada")
+
 
 except Exception as error:
 
@@ -82,6 +82,6 @@ except Exception as error:
     sys.exit(1)
 
 
-print("PASO 6: iniciando QApplication")
+
 
 sys.exit(app.exec())

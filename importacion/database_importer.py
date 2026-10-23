@@ -1,20 +1,21 @@
+
 from database.connection import obtener_conexion
 from importacion.hash_marcacion import generar_hash_marcacion
 
 
 def importar_dataframe(df):
-
-    conexion = obtener_conexion()
-    cursor = conexion.cursor()
+    conexion = None
+    cursor = None
 
     empleados_nuevos = 0
     marcaciones_nuevas = 0
     marcaciones_duplicadas = 0
 
     try:
+        conexion = obtener_conexion()
+        cursor = conexion.cursor()
 
         for _, fila in df.iterrows():
-
             id_usuario = str(fila["ID usuario"]).strip()
             nombre = str(fila["Nombre"]).strip()
             apellido = str(fila["Apellido"]).strip()
@@ -43,14 +44,11 @@ def importar_dataframe(df):
             notas = fila["Notas"]
 
             if str(notas).lower() == "nan":
-              notas = ""
+                notas = ""
             else:
-              notas = str(notas).strip()
+                notas = str(notas).strip()
 
-            # -------------------------
             # 1. REGISTRAR EMPLEADO
-            # -------------------------
-
             sql_empleado = """
                 INSERT INTO empleados
                 (
@@ -80,10 +78,7 @@ def importar_dataframe(df):
             if cursor.rowcount == 1:
                 empleados_nuevos += 1
 
-            # -------------------------
             # 2. OBTENER ID DEL EMPLEADO
-            # -------------------------
-
             cursor.execute(
                 """
                 SELECT id
@@ -96,16 +91,13 @@ def importar_dataframe(df):
             empleado = cursor.fetchone()
 
             if not empleado:
-                raise Exception(
+                raise RuntimeError(
                     f"No se encontró empleado {id_usuario}"
                 )
 
             empleado_id = empleado[0]
 
-            # -------------------------
             # 3. GENERAR HASH
-            # -------------------------
-
             hash_marcacion = generar_hash_marcacion(
                 id_usuario,
                 fecha_hora,
@@ -114,10 +106,7 @@ def importar_dataframe(df):
                 evento
             )
 
-            # -------------------------
             # 4. GUARDAR MARCACIÓN
-            # -------------------------
-
             sql_marcacion = """
                 INSERT IGNORE INTO marcaciones
                 (
@@ -130,11 +119,7 @@ def importar_dataframe(df):
                     notas,
                     hash_marcacion
                 )
-                VALUES
-                (
-                    %s, %s, %s, %s,
-                    %s, %s, %s, %s
-                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """
 
             cursor.execute(
@@ -166,8 +151,11 @@ def importar_dataframe(df):
         }
 
     except Exception as e:
-
-        conexion.rollback()
+        if conexion is not None:
+            try:
+                conexion.rollback()
+            except Exception:
+                pass
 
         return {
             "ok": False,
@@ -178,6 +166,14 @@ def importar_dataframe(df):
         }
 
     finally:
+        if cursor is not None:
+            try:
+                cursor.close()
+            except Exception:
+                pass
 
-        cursor.close()
-        conexion.close()
+        if conexion is not None:
+            try:
+                conexion.close()
+            except Exception:
+                pass
