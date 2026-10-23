@@ -15,6 +15,7 @@ def importar_dataframe(df):
             "marcaciones": 0,
             "duplicadas": 0
         }
+        df = validacion["datos"]
 
     conexion = None
     cursor = None
