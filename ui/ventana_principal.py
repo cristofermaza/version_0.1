@@ -25,20 +25,20 @@ class VentanaPrincipal(QMainWindow):
 
     def __init__(self, gestor_fuentes, gestor_configuracion):
 
-        print("VP 1: entrando a VentanaPrincipal")
+
 
         super().__init__()
 
-        print("VP 2: super() terminado")
+
 
         self.gestor_fuentes = gestor_fuentes
         self.gestor_configuracion = gestor_configuracion
 
-        print("VP 3: gestores asignados")
+
 
         self.construir_interfaz()
 
-        print("VP 4: interfaz construida")
+
 
     # ==========================================================
     # CONSTRUIR INTERFAZ
