@@ -15,7 +15,6 @@ from PySide6.QtWidgets import (
 from ui.formulario_personal import FormularioPersonal
 
 
-
 class PaginaPersonal(QWidget):
 
     def __init__(self, gestor_fuentes=None):
@@ -277,50 +276,134 @@ class PaginaPersonal(QWidget):
         return tarjeta
 
     # ==========================================================
-    # CARGAR TRABAJADORES DESDE MYSQL
+    # CARGAR TRABAJADORES
     # ==========================================================
 
     def cargar_trabajadores(self):
+
+        print("========================================")
+        print("PERSONAL: iniciando carga de trabajadores")
+        print("========================================")
 
         try:
 
             self.tabla.setRowCount(0)
 
+            # ------------------------------------------
+            # COMPROBAR GESTOR
+            # ------------------------------------------
+
             if not self.gestor_fuentes:
-                self.lbl_info.setText("Fuente de datos no configurada.")
+
+                print(
+                    "PERSONAL: gestor_fuentes = None"
+                )
+
+                self.lbl_info.setText(
+                    "Fuente de datos no configurada."
+                )
+
                 self.actualizar_resumen()
+
                 return
 
-            if not self.gestor_fuentes.esta_disponible():
-                self.lbl_info.setText("Fuente de datos no disponible.")
+            print(
+                "PERSONAL: gestor_fuentes recibido correctamente"
+            )
+
+            # ------------------------------------------
+            # COMPROBAR CONEXIÓN
+            # ------------------------------------------
+
+            disponible = (
+                self.gestor_fuentes.esta_disponible()
+            )
+
+            print(
+                f"PERSONAL: fuente disponible = {disponible}"
+            )
+
+            if not disponible:
+
+                print(
+                    "PERSONAL: NO existe conexión con la fuente"
+                )
+
+                self.lbl_info.setText(
+                    "Fuente de datos no disponible."
+                )
+
                 self.actualizar_resumen()
+
                 return
 
-            trabajadores = self.gestor_fuentes.obtener_empleados()
+            # ------------------------------------------
+            # OBTENER TRABAJADORES
+            # ------------------------------------------
+
+            print(
+                "PERSONAL: consultando empleados..."
+            )
+
+            trabajadores = (
+                self.gestor_fuentes
+                .obtener_empleados()
+            )
+
+            print(
+                "PERSONAL: trabajadores encontrados = "
+                f"{len(trabajadores)}"
+            )
+
+            # ------------------------------------------
+            # MOSTRAR TRABAJADORES
+            # ------------------------------------------
 
             for trabajador in trabajadores:
 
+                print(
+                    "PERSONAL: cargando trabajador:",
+                    trabajador
+                )
+
                 id_usuario = str(
-                    trabajador.get("id_usuario", "")
+                    trabajador.get(
+                        "id_usuario",
+                        ""
+                    )
                 )
 
                 nombre = str(
-                    trabajador.get("nombre", "")
+                    trabajador.get(
+                        "nombre",
+                        ""
+                    )
                 )
 
                 apellido = str(
-                    trabajador.get("apellido", "")
+                    trabajador.get(
+                        "apellido",
+                        ""
+                    )
                 )
 
                 tarjeta = (
                     ""
-                    if trabajador.get("numero_tarjeta") is None
-                    else str(trabajador.get("numero_tarjeta"))
+                    if trabajador.get(
+                        "numero_tarjeta"
+                    ) is None
+                    else str(
+                        trabajador.get(
+                            "numero_tarjeta"
+                        )
+                    )
                 )
 
                 estado = (
                     "Activo"
-                    if trabajador.get("estado")
+                    if trabajador.get(
+                        "estado"
+                    )
                     else "Inactivo"
                 )
 
@@ -336,20 +419,51 @@ class PaginaPersonal(QWidget):
                     datos
                 )
 
+            # ------------------------------------------
+            # ACTUALIZAR RESUMEN
+            # ------------------------------------------
+
             self.actualizar_resumen()
 
-            self.lbl_info.setText(
-                f"Trabajadores registrados: "
-                f"{self.tabla.rowCount()}"
+            cantidad = (
+                self.tabla.rowCount()
             )
 
-        except Exception as e:
+            self.lbl_info.setText(
+                f"Trabajadores registrados: {cantidad}"
+            )
+
+            print(
+                f"PERSONAL: tabla cargada con {cantidad} registros"
+            )
+
+            print(
+                "========================================"
+            )
+
+        except Exception as error:
+
+            print(
+                "PERSONAL: ERROR AL CARGAR TRABAJADORES"
+            )
+
+            print(
+                type(error).__name__
+            )
+
+            print(
+                str(error)
+            )
+
+            import traceback
+
+            traceback.print_exc()
 
             QMessageBox.critical(
                 self,
                 "Error de base de datos",
                 "No se pudieron cargar los trabajadores.\n\n"
-                f"{e}"
+                f"{error}"
             )
 
     # ==========================================================
@@ -401,7 +515,7 @@ class PaginaPersonal(QWidget):
         )
 
         # ------------------------------------------------------
-        # ELIMINAR
+        # DAR DE BAJA
         # ------------------------------------------------------
 
         boton_eliminar = QPushButton(
@@ -454,10 +568,16 @@ class PaginaPersonal(QWidget):
         try:
 
             if not self.gestor_fuentes:
-                raise RuntimeError("No hay una fuente de datos configurada.")
+
+                raise RuntimeError(
+                    "No hay una fuente de datos configurada."
+                )
 
             if not self.gestor_fuentes.esta_disponible():
-                raise RuntimeError("La fuente de datos no está disponible.")
+
+                raise RuntimeError(
+                    "La fuente de datos no está disponible."
+                )
 
             self.gestor_fuentes.crear_empleado(
                 id_usuario,
@@ -544,10 +664,16 @@ class PaginaPersonal(QWidget):
         try:
 
             if not self.gestor_fuentes:
-                raise RuntimeError("No hay una fuente de datos configurada.")
+
+                raise RuntimeError(
+                    "No hay una fuente de datos configurada."
+                )
 
             if not self.gestor_fuentes.esta_disponible():
-                raise RuntimeError("La fuente de datos no está disponible.")
+
+                raise RuntimeError(
+                    "La fuente de datos no está disponible."
+                )
 
             self.gestor_fuentes.actualizar_empleado(
                 id_usuario_original,
@@ -614,10 +740,16 @@ class PaginaPersonal(QWidget):
         try:
 
             if not self.gestor_fuentes:
-                raise RuntimeError("No hay una fuente de datos configurada.")
+
+                raise RuntimeError(
+                    "No hay una fuente de datos configurada."
+                )
 
             if not self.gestor_fuentes.esta_disponible():
-                raise RuntimeError("La fuente de datos no está disponible.")
+
+                raise RuntimeError(
+                    "La fuente de datos no está disponible."
+                )
 
             self.gestor_fuentes.desactivar_empleado(
                 id_usuario
@@ -686,8 +818,7 @@ class PaginaPersonal(QWidget):
                 visibles += 1
 
         self.lbl_info.setText(
-            f"Trabajadores mostrados: "
-            f"{visibles}"
+            f"Trabajadores mostrados: {visibles}"
         )
 
     # ==========================================================
@@ -703,10 +834,15 @@ class PaginaPersonal(QWidget):
 
         for fila in range(total):
 
-            estado = self.tabla.item(
+            item_estado = self.tabla.item(
                 fila,
                 4
-            ).text()
+            )
+
+            if not item_estado:
+                continue
+
+            estado = item_estado.text()
 
             if estado == "Activo":
                 activos += 1

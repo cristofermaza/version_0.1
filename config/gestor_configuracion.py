@@ -3,19 +3,70 @@ from pathlib import Path
 
 
 CONFIGURACION_POR_DEFECTO = {
+    "organizacion": {
+        "nombre": "",
+        "codigo": "",
+        "direccion": "",
+        "telefono": ""
+    },
+
+    "fuente_datos": {
+        "tipo": "mysql",
+
+        "mysql": {
+            "servidor": "localhost",
+            "puerto": 3306,
+            "base_datos": "",
+            "usuario": "",
+            "password": ""
+        }
+    },
+
+    "importacion": {
+        "tipo": "excel",
+        "modo": "carpeta",
+        "extensiones": [
+            ".xlsx",
+            ".xls"
+        ]
+    },
+
     "asistencia": {
         "horario": {
             "hora_entrada": "08:00",
             "hora_salida": "17:00"
         },
+
         "tolerancia": {
             "minutos_entrada": 0
         },
+
         "reglas": {
             "primera_marcacion_es_entrada": True,
             "ultima_marcacion_es_salida": True,
             "generar_salida_si_solo_hay_una_marcacion": False
         }
+    },
+
+    "permisos": {
+        "habilitado": True
+    },
+
+    "remuneraciones": {
+        "habilitado": True
+    },
+
+    "reportes": {
+        "formato_predeterminado": "PDF"
+    },
+
+    "seguridad": {
+        "sesion_habilitada": False
+    },
+
+    "sistema": {
+        "idioma": "es",
+        "tema": "institucional"
     }
 }
 
@@ -28,14 +79,12 @@ class GestorConfiguracion:
             / "configuracion.json"
         )
 
-    # ==========================================
-    # CARGAR
-    # ==========================================
-
     def cargar(self):
 
         if not self.archivo.exists():
-            return self._configuracion_por_defecto()
+            configuracion = self._configuracion_por_defecto()
+            self.guardar(configuracion)
+            return configuracion
 
         try:
 
@@ -45,9 +94,7 @@ class GestorConfiguracion:
                 encoding="utf-8"
             ) as archivo:
 
-                configuracion = json.load(
-                    archivo
-                )
+                configuracion = json.load(archivo)
 
             return self._completar_configuracion(
                 configuracion
@@ -60,18 +107,12 @@ class GestorConfiguracion:
 
             return self._configuracion_por_defecto()
 
-    # ==========================================
-    # GUARDAR
-    # ==========================================
-
     def guardar(self, configuracion):
 
         try:
 
-            configuracion = (
-                self._completar_configuracion(
-                    configuracion
-                )
+            configuracion = self._completar_configuracion(
+                configuracion
             )
 
             with open(
@@ -93,10 +134,6 @@ class GestorConfiguracion:
 
             return False
 
-    # ==========================================
-    # COMPLETAR CONFIGURACIÓN
-    # ==========================================
-
     def _completar_configuracion(
         self,
         configuracion
@@ -108,77 +145,89 @@ class GestorConfiguracion:
         ):
             configuracion = {}
 
-        asistencia = configuracion.setdefault(
-            "asistencia",
-            {}
+        return self._fusionar_configuracion(
+            CONFIGURACION_POR_DEFECTO,
+            configuracion
         )
 
-        horario = asistencia.setdefault(
-            "horario",
-            {}
-        )
+    def _fusionar_configuracion(
+        self,
+        valores_por_defecto,
+        valores_actuales
+    ):
 
-        horario.setdefault(
-            "hora_entrada",
-            "08:00"
-        )
+        resultado = {}
 
-        horario.setdefault(
-            "hora_salida",
-            "17:00"
-        )
+        for clave, valor_defecto in (
+            valores_por_defecto.items()
+        ):
 
-        tolerancia = asistencia.setdefault(
-            "tolerancia",
-            {}
-        )
+            if clave not in valores_actuales:
 
-        tolerancia.setdefault(
-            "minutos_entrada",
-            0
-        )
+                if isinstance(
+                    valor_defecto,
+                    dict
+                ):
 
-        reglas = asistencia.setdefault(
-            "reglas",
-            {}
-        )
+                    resultado[clave] = (
+                        self._fusionar_configuracion(
+                            valor_defecto,
+                            {}
+                        )
+                    )
 
-        reglas.setdefault(
-            "primera_marcacion_es_entrada",
-            True
-        )
+                elif isinstance(
+                    valor_defecto,
+                    list
+                ):
 
-        reglas.setdefault(
-            "ultima_marcacion_es_salida",
-            True
-        )
+                    resultado[clave] = list(
+                        valor_defecto
+                    )
 
-        reglas.setdefault(
-            "generar_salida_si_solo_hay_una_marcacion",
-            False
-        )
+                else:
 
-        return configuracion
+                    resultado[clave] = valor_defecto
 
-    # ==========================================
-    # CONFIGURACIÓN POR DEFECTO
-    # ==========================================
+                continue
+
+            valor_actual = valores_actuales[clave]
+
+            if (
+                isinstance(
+                    valor_defecto,
+                    dict
+                )
+                and isinstance(
+                    valor_actual,
+                    dict
+                )
+            ):
+
+                resultado[clave] = (
+                    self._fusionar_configuracion(
+                        valor_defecto,
+                        valor_actual
+                    )
+                )
+
+            else:
+
+                resultado[clave] = valor_actual
+
+        # Conservamos configuraciones adicionales
+        # que puedan existir.
+        for clave, valor in valores_actuales.items():
+
+            if clave not in resultado:
+
+                resultado[clave] = valor
+
+        return resultado
 
     def _configuracion_por_defecto(self):
 
-        return {
-            "asistencia": {
-                "horario": {
-                    "hora_entrada": "08:00",
-                    "hora_salida": "17:00"
-                },
-                "tolerancia": {
-                    "minutos_entrada": 0
-                },
-                "reglas": {
-                    "primera_marcacion_es_entrada": True,
-                    "ultima_marcacion_es_salida": True,
-                    "generar_salida_si_solo_hay_una_marcacion": False
-                }
-            }
-        }
+        return self._fusionar_configuracion(
+            CONFIGURACION_POR_DEFECTO,
+            {}
+        )

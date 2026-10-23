@@ -2,22 +2,20 @@ from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
+    QFormLayout,
     QLabel,
-    QPushButton,
-    QFrame,
-    QStackedWidget,
     QLineEdit,
+    QPushButton,
     QComboBox,
-    QFileDialog,
-    QMessageBox,
     QSpinBox,
-    QTimeEdit
+    QCheckBox,
+    QGroupBox,
+    QMessageBox,
+    QTabWidget,
+    QScrollArea
 )
 
-from PySide6.QtCore import QTime
-
-from data_sources.gestor_fuentes import GestorFuentes
-from config.gestor_configuracion import GestorConfiguracion
+from PySide6.QtCore import Qt
 
 
 class PaginaConfiguracion(QWidget):
@@ -27,1136 +25,833 @@ class PaginaConfiguracion(QWidget):
         gestor_fuentes=None,
         gestor_configuracion=None
     ):
-
         super().__init__()
 
-        self.gestor_fuentes = (
-            gestor_fuentes
-            if gestor_fuentes
-            else GestorFuentes()
-        )
+        self.gestor_fuentes = gestor_fuentes
+        self.gestor_configuracion = gestor_configuracion
 
-        self.gestor_configuracion = (
-            gestor_configuracion
-            if gestor_configuracion
-            else GestorConfiguracion()
+        self.configuracion = (
+            self.gestor_configuracion.cargar()
+            if self.gestor_configuracion
+            else {}
         )
 
         self.construir_interfaz()
+        self.cargar_configuracion()
 
-    # ==========================================================
+    # ==================================================
     # INTERFAZ PRINCIPAL
-    # ==========================================================
+    # ==================================================
 
     def construir_interfaz(self):
 
-        layout = QVBoxLayout()
+        layout_principal = QVBoxLayout()
 
-        layout.setContentsMargins(
+        layout_principal.setContentsMargins(
             30,
             25,
             30,
-            25
+            30
         )
 
-        layout.setSpacing(16)
+        layout_principal.setSpacing(15)
 
-        # ======================================================
-        # TÍTULO
-        # ======================================================
+        self.setLayout(layout_principal)
+
+        # ----------------------------------------------
+        # TITULO
+        # ----------------------------------------------
 
         titulo = QLabel(
-            "Configuración de datos"
+            "Configuración"
         )
 
         titulo.setObjectName(
-            "tituloPagina"
-        )
-
-        subtitulo = QLabel(
-            "Configure el origen desde el cual el sistema "
-            "obtendrá la información."
-        )
-
-        subtitulo.setObjectName(
-            "subtituloPagina"
-        )
-
-        layout.addWidget(titulo)
-        layout.addWidget(subtitulo)
-
-        # ======================================================
-        # OPCIONES DE FUENTE
-        # ======================================================
-
-        opciones = QHBoxLayout()
-
-        opciones.setSpacing(12)
-
-        self.btn_excel = self.crear_boton_fuente(
-            "📊",
-            "Excel",
-            "Archivos .xlsx y .xls"
-        )
-
-        self.btn_csv = self.crear_boton_fuente(
-            "📄",
-            "CSV",
-            "Archivos delimitados"
-        )
-
-        self.btn_bd = self.crear_boton_fuente(
-            "🗄",
-            "Base de datos",
-            "MySQL / MariaDB"
-        )
-
-        self.btn_api = self.crear_boton_fuente(
-            "🔗",
-            "API",
-            "Sistema externo"
-        )
-
-        opciones.addWidget(
-            self.btn_excel
-        )
-
-        opciones.addWidget(
-            self.btn_csv
-        )
-
-        opciones.addWidget(
-            self.btn_bd
-        )
-
-        opciones.addWidget(
-            self.btn_api
-        )
-
-        layout.addLayout(opciones)
-
-        # ======================================================
-        # CONFIGURACIÓN DE FUENTE
-        # ======================================================
-
-        self.contenido = QStackedWidget()
-
-        self.pagina_excel = (
-            self.crear_pagina_excel()
-        )
-
-        self.pagina_csv = (
-            self.crear_pagina_csv()
-        )
-
-        self.pagina_bd = (
-            self.crear_pagina_bd()
-        )
-
-        self.pagina_api = (
-            self.crear_pagina_api()
-        )
-
-        self.contenido.addWidget(
-            self.pagina_excel
-        )
-
-        self.contenido.addWidget(
-            self.pagina_csv
-        )
-
-        self.contenido.addWidget(
-            self.pagina_bd
-        )
-
-        self.contenido.addWidget(
-            self.pagina_api
-        )
-
-        layout.addWidget(
-            self.contenido
-        )
-
-        # ======================================================
-        # CONFIGURACIÓN DE ASISTENCIA
-        # ======================================================
-
-        titulo_asistencia = QLabel(
-            "Configuración de asistencia"
-        )
-
-        titulo_asistencia.setObjectName(
-            "tituloSeccion"
-        )
-
-        descripcion_asistencia = QLabel(
-            "Defina el horario de trabajo y la tolerancia "
-            "utilizada para procesar las marcaciones."
-        )
-
-        descripcion_asistencia.setObjectName(
-            "subtituloPagina"
-        )
-
-        layout.addWidget(
-            titulo_asistencia
-        )
-
-        layout.addWidget(
-            descripcion_asistencia
-        )
-
-        panel_asistencia = (
-            self.crear_panel_asistencia()
-        )
-
-        layout.addWidget(
-            panel_asistencia
-        )
-
-        # ======================================================
-        # CONEXIONES
-        # ======================================================
-
-        self.btn_excel.clicked.connect(
-            lambda: self.mostrar_fuente(0)
-        )
-
-        self.btn_csv.clicked.connect(
-            lambda: self.mostrar_fuente(1)
-        )
-
-        self.btn_bd.clicked.connect(
-            lambda: self.mostrar_fuente(2)
-        )
-
-        self.btn_api.clicked.connect(
-            lambda: self.mostrar_fuente(3)
-        )
-
-        self.setLayout(
-            layout
-        )
-
-        # ======================================================
-        # CARGAR CONFIGURACIÓN
-        # ======================================================
-
-        self.cargar_configuracion_asistencia()
-
-        self.mostrar_fuente(0)
-
-    # ==========================================================
-    # BOTÓN DE FUENTE
-    # ==========================================================
-
-    def crear_boton_fuente(
-        self,
-        icono,
-        titulo,
-        descripcion
-    ):
-
-        boton = QPushButton()
-
-        boton.setMinimumHeight(
-            95
-        )
-
-        boton.setText(
-            f"{icono}  {titulo}\n{descripcion}"
-        )
-
-        return boton
-
-    # ==========================================================
-    # CAMBIAR FUENTE
-    # ==========================================================
-
-    def mostrar_fuente(
-        self,
-        indice
-    ):
-
-        self.contenido.setCurrentIndex(
-            indice
-        )
-
-        botones = [
-            self.btn_excel,
-            self.btn_csv,
-            self.btn_bd,
-            self.btn_api
-        ]
-
-        for boton in botones:
-
-            boton.setProperty(
-                "activo",
-                False
-            )
-
-            boton.style().unpolish(
-                boton
-            )
-
-            boton.style().polish(
-                boton
-            )
-
-        boton_activo = botones[indice]
-
-        boton_activo.setProperty(
-            "activo",
-            True
-        )
-
-        boton_activo.style().unpolish(
-            boton_activo
-        )
-
-        boton_activo.style().polish(
-            boton_activo
-        )
-
-    # ==========================================================
-    # EXCEL
-    # ==========================================================
-
-    def crear_pagina_excel(self):
-
-        pagina = QFrame()
-
-        pagina.setObjectName(
-            "panel"
-        )
-
-        layout = QVBoxLayout()
-
-        layout.setContentsMargins(
-            25,
-            20,
-            25,
-            20
-        )
-
-        titulo = QLabel(
-            "Configuración de Excel"
-        )
-
-        titulo.setObjectName(
-            "tituloSeccion"
+            "titulo_pagina"
         )
 
         descripcion = QLabel(
-            "Seleccione la carpeta donde se encuentran "
-            "los archivos de Excel que utilizará el sistema."
+            "Configure los parámetros generales y "
+            "las fuentes de información del sistema."
         )
 
         descripcion.setObjectName(
-            "subtituloPagina"
+            "descripcion_pagina"
         )
 
-        layout.addWidget(
-            titulo
+        layout_principal.addWidget(titulo)
+        layout_principal.addWidget(descripcion)
+
+        # ----------------------------------------------
+        # PESTAÑAS
+        # ----------------------------------------------
+
+        self.pestanas = QTabWidget()
+
+        self.pestanas.addTab(
+            self.crear_pagina_organizacion(),
+            "Organización"
         )
 
-        layout.addWidget(
-            descripcion
+        self.pestanas.addTab(
+            self.crear_pagina_fuente_datos(),
+            "Fuente de datos"
         )
 
-        layout.addSpacing(10)
-
-        fila = QHBoxLayout()
-
-        self.excel_ruta = QLineEdit()
-
-        self.excel_ruta.setPlaceholderText(
-            "Seleccione una carpeta..."
+        self.pestanas.addTab(
+            self.crear_pagina_importacion(),
+            "Importación"
         )
 
-        boton = QPushButton(
-            "Seleccionar carpeta"
+        self.pestanas.addTab(
+            self.crear_pagina_asistencia(),
+            "Asistencia"
         )
 
-        boton.clicked.connect(
-            self.seleccionar_carpeta
+        self.pestanas.addTab(
+            self.crear_pagina_modulos(),
+            "Módulos"
         )
 
-        fila.addWidget(
-            self.excel_ruta
+        layout_principal.addWidget(
+            self.pestanas
         )
 
-        fila.addWidget(
-            boton
-        )
+        # ----------------------------------------------
+        # BOTONES
+        # ----------------------------------------------
 
-        layout.addLayout(
-            fila
-        )
+        barra_botones = QHBoxLayout()
 
-        self.excel_formato = QComboBox()
+        barra_botones.addStretch()
 
-        self.excel_formato.addItems([
-            "Un archivo por trabajador",
-            "Un archivo mensual",
-            "Formato personalizado"
-        ])
-
-        layout.addWidget(
-            QLabel(
-                "Tipo de estructura:"
-            )
-        )
-
-        layout.addWidget(
-            self.excel_formato
-        )
-
-        boton_guardar = QPushButton(
+        self.boton_guardar = QPushButton(
             "Guardar configuración"
         )
 
-        boton_guardar.clicked.connect(
-            self.guardar_excel
+        self.boton_guardar.setMinimumHeight(40)
+
+        self.boton_guardar.clicked.connect(
+            self.guardar_configuracion
+        )
+
+        barra_botones.addWidget(
+            self.boton_guardar
+        )
+
+        layout_principal.addLayout(
+            barra_botones
+        )
+
+    # ==================================================
+    # ORGANIZACIÓN
+    # ==================================================
+
+    def crear_pagina_organizacion(self):
+
+        pagina = QWidget()
+
+        layout = QVBoxLayout(
+            pagina
+        )
+
+        layout.setContentsMargins(
+            20,
+            20,
+            20,
+            20
+        )
+
+        grupo = QGroupBox(
+            "Información de la organización"
+        )
+
+        formulario = QFormLayout()
+
+        self.organizacion_nombre = QLineEdit()
+
+        self.organizacion_codigo = QLineEdit()
+
+        self.organizacion_direccion = QLineEdit()
+
+        self.organizacion_telefono = QLineEdit()
+
+        formulario.addRow(
+            "Nombre:",
+            self.organizacion_nombre
+        )
+
+        formulario.addRow(
+            "Código:",
+            self.organizacion_codigo
+        )
+
+        formulario.addRow(
+            "Dirección:",
+            self.organizacion_direccion
+        )
+
+        formulario.addRow(
+            "Teléfono:",
+            self.organizacion_telefono
+        )
+
+        grupo.setLayout(
+            formulario
         )
 
         layout.addWidget(
-            boton_guardar
+            grupo
         )
 
         layout.addStretch()
 
-        pagina.setLayout(
-            layout
-        )
-
         return pagina
 
-    # ==========================================================
-    # CSV
-    # ==========================================================
+    # ==================================================
+    # FUENTE DE DATOS
+    # ==================================================
 
-    def crear_pagina_csv(self):
+    def crear_pagina_fuente_datos(self):
 
-        pagina = QFrame()
+        pagina = QWidget()
 
-        pagina.setObjectName(
-            "panel"
+        layout = QVBoxLayout(
+            pagina
         )
 
-        layout = QVBoxLayout()
-
         layout.setContentsMargins(
-            25,
             20,
-            25,
+            20,
+            20,
             20
         )
 
-        titulo = QLabel(
-            "Configuración de CSV"
+        grupo = QGroupBox(
+            "Fuente de datos"
         )
 
-        titulo.setObjectName(
-            "tituloSeccion"
-        )
+        formulario = QFormLayout()
 
-        layout.addWidget(
-            titulo
-        )
+        self.fuente_tipo = QComboBox()
 
-        layout.addWidget(
-            QLabel(
-                "Configure el archivo CSV que utilizará "
-                "como fuente de información."
-            )
-        )
-
-        self.csv_ruta = QLineEdit()
-
-        self.csv_ruta.setPlaceholderText(
-            "Ruta del archivo CSV..."
-        )
-
-        layout.addWidget(
-            self.csv_ruta
-        )
-
-        self.csv_separador = QComboBox()
-
-        self.csv_separador.addItems([
-            "Coma (,)",
-            "Punto y coma (;)",
-            "Tabulación"
-        ])
-
-        layout.addWidget(
-            QLabel(
-                "Separador:"
-            )
-        )
-
-        layout.addWidget(
-            self.csv_separador
-        )
-
-        boton = QPushButton(
-            "Guardar configuración"
-        )
-
-        boton.clicked.connect(
-            lambda: QMessageBox.information(
-                self,
-                "Configuración",
-                "Configuración CSV guardada."
-            )
-        )
-
-        layout.addWidget(
-            boton
-        )
-
-        layout.addStretch()
-
-        pagina.setLayout(
-            layout
-        )
-
-        return pagina
-
-    # ==========================================================
-    # BASE DE DATOS
-    # ==========================================================
-
-    def crear_pagina_bd(self):
-
-        pagina = QFrame()
-
-        pagina.setObjectName(
-            "panel"
-        )
-
-        layout = QVBoxLayout()
-
-        layout.setContentsMargins(
-            25,
-            20,
-            25,
-            20
-        )
-
-        titulo = QLabel(
-            "Configuración de base de datos"
-        )
-
-        titulo.setObjectName(
-            "tituloSeccion"
-        )
-
-        layout.addWidget(
-            titulo
-        )
-
-        layout.addWidget(
-            QLabel(
-                "Motor:"
-            )
-        )
-
-        self.bd_motor = QComboBox()
-
-        self.bd_motor.addItems([
+        self.fuente_tipo.addItem(
             "MySQL",
-            "MariaDB"
-        ])
+            "mysql"
+        )
 
-        layout.addWidget(
-            self.bd_motor
+        self.fuente_tipo.addItem(
+            "Base de datos",
+            "bd"
+        )
+
+        self.fuente_tipo.addItem(
+            "Excel",
+            "excel"
+        )
+
+        self.fuente_tipo.addItem(
+            "CSV",
+            "csv"
+        )
+
+        self.fuente_tipo.addItem(
+            "API",
+            "api"
+        )
+
+        self.fuente_tipo.currentIndexChanged.connect(
+            self.actualizar_campos_fuente
         )
 
         self.bd_servidor = QLineEdit()
 
-        self.bd_servidor.setPlaceholderText(
-            "Servidor"
-        )
+        self.bd_puerto = QSpinBox()
 
-        self.bd_puerto = QLineEdit()
-
-        self.bd_puerto.setPlaceholderText(
-            "Puerto"
+        self.bd_puerto.setRange(
+            1,
+            65535
         )
 
         self.bd_base = QLineEdit()
 
-        self.bd_base.setPlaceholderText(
-            "Base de datos"
-        )
-
         self.bd_usuario = QLineEdit()
-
-        self.bd_usuario.setPlaceholderText(
-            "Usuario"
-        )
 
         self.bd_password = QLineEdit()
 
-        self.bd_password.setPlaceholderText(
-            "Contraseña"
-        )
-
         self.bd_password.setEchoMode(
-            QLineEdit.EchoMode.Password
+            QLineEdit.Password
         )
 
-        layout.addWidget(
+        formulario.addRow(
+            "Tipo:",
+            self.fuente_tipo
+        )
+
+        formulario.addRow(
+            "Servidor:",
             self.bd_servidor
         )
 
-        layout.addWidget(
+        formulario.addRow(
+            "Puerto:",
             self.bd_puerto
         )
 
-        layout.addWidget(
+        formulario.addRow(
+            "Base de datos:",
             self.bd_base
         )
 
-        layout.addWidget(
+        formulario.addRow(
+            "Usuario:",
             self.bd_usuario
         )
 
-        layout.addWidget(
+        formulario.addRow(
+            "Contraseña:",
             self.bd_password
         )
 
-        boton_probar = QPushButton(
+        grupo.setLayout(
+            formulario
+        )
+
+        layout.addWidget(
+            grupo
+        )
+
+        # ----------------------------------------------
+        # ESTADO
+        # ----------------------------------------------
+
+        self.estado_fuente = QLabel(
+            "Sin comprobar"
+        )
+
+        layout.addWidget(
+            self.estado_fuente
+        )
+
+        # ----------------------------------------------
+        # BOTON PROBAR
+        # ----------------------------------------------
+
+        self.boton_probar = QPushButton(
             "Probar conexión"
         )
 
-        boton_probar.clicked.connect(
-            self.probar_conexion_mysql
+        self.boton_probar.setMinimumHeight(
+            40
+        )
+
+        self.boton_probar.clicked.connect(
+            self.probar_conexion
         )
 
         layout.addWidget(
-            boton_probar
-        )
-
-        boton_guardar = QPushButton(
-            "Guardar configuración"
-        )
-
-        boton_guardar.clicked.connect(
-            self.guardar_mysql
-        )
-
-        layout.addWidget(
-            boton_guardar
+            self.boton_probar
         )
 
         layout.addStretch()
 
-        pagina.setLayout(
-            layout
-        )
-
         return pagina
 
-    # ==========================================================
-    # PROBAR CONEXIÓN MYSQL
-    # ==========================================================
+    # ==================================================
+    # IMPORTACION
+    # ==================================================
 
-    def probar_conexion_mysql(self):
+    def crear_pagina_importacion(self):
 
-        servidor = self.bd_servidor.text().strip()
+        pagina = QWidget()
 
-        puerto_texto = (
-            self.bd_puerto.text().strip()
+        layout = QVBoxLayout(
+            pagina
         )
-
-        base_datos = (
-            self.bd_base.text().strip()
-        )
-
-        usuario = (
-            self.bd_usuario.text().strip()
-        )
-
-        password = self.bd_password.text()
-
-        if not servidor:
-
-            QMessageBox.warning(
-                self,
-                "Datos incompletos",
-                "Ingrese el servidor de MySQL."
-            )
-
-            return
-
-        if not puerto_texto:
-
-            QMessageBox.warning(
-                self,
-                "Datos incompletos",
-                "Ingrese el puerto de MySQL."
-            )
-
-            return
-
-        if not base_datos:
-
-            QMessageBox.warning(
-                self,
-                "Datos incompletos",
-                "Ingrese el nombre de la base de datos."
-            )
-
-            return
-
-        if not usuario:
-
-            QMessageBox.warning(
-                self,
-                "Datos incompletos",
-                "Ingrese el usuario de MySQL."
-            )
-
-            return
-
-        try:
-
-            puerto = int(
-                puerto_texto
-            )
-
-        except ValueError:
-
-            QMessageBox.warning(
-                self,
-                "Puerto inválido",
-                "El puerto debe ser un número."
-            )
-
-            return
-
-        self.gestor_fuentes.configurar_mysql(
-            servidor=servidor,
-            puerto=puerto,
-            base_datos=base_datos,
-            usuario=usuario,
-            password=password
-        )
-
-        if self.gestor_fuentes.conectar():
-
-            QMessageBox.information(
-                self,
-                "Conexión exitosa",
-                "La conexión con MySQL se realizó correctamente."
-            )
-
-        else:
-
-            error = (
-                self.gestor_fuentes.obtener_error()
-            )
-
-            QMessageBox.critical(
-                self,
-                "Error de conexión",
-                "No fue posible conectarse a MySQL.\n\n"
-                f"Detalle:\n{error}"
-            )
-
-    # ==========================================================
-    # GUARDAR CONFIGURACIÓN MYSQL
-    # ==========================================================
-
-    def guardar_mysql(self):
-
-        servidor = (
-            self.bd_servidor.text().strip()
-        )
-
-        puerto_texto = (
-            self.bd_puerto.text().strip()
-        )
-
-        base_datos = (
-            self.bd_base.text().strip()
-        )
-
-        usuario = (
-            self.bd_usuario.text().strip()
-        )
-
-        password = (
-            self.bd_password.text()
-        )
-
-        if not servidor:
-
-            QMessageBox.warning(
-                self,
-                "Configuración",
-                "Ingrese el servidor."
-            )
-
-            return
-
-        if not puerto_texto:
-
-            QMessageBox.warning(
-                self,
-                "Configuración",
-                "Ingrese el puerto."
-            )
-
-            return
-
-        if not base_datos:
-
-            QMessageBox.warning(
-                self,
-                "Configuración",
-                "Ingrese la base de datos."
-            )
-
-            return
-
-        if not usuario:
-
-            QMessageBox.warning(
-                self,
-                "Configuración",
-                "Ingrese el usuario."
-            )
-
-            return
-
-        try:
-
-            puerto = int(
-                puerto_texto
-            )
-
-        except ValueError:
-
-            QMessageBox.warning(
-                self,
-                "Configuración",
-                "El puerto debe ser un número."
-            )
-
-            return
-
-        configuracion = (
-            self.gestor_configuracion.cargar()
-        )
-
-        if "fuente_datos" not in configuracion:
-
-            configuracion["fuente_datos"] = {}
-
-        configuracion["fuente_datos"]["tipo"] = (
-            "mysql"
-        )
-
-        configuracion["fuente_datos"]["mysql"] = {
-            "servidor": servidor,
-            "puerto": puerto,
-            "base_datos": base_datos,
-            "usuario": usuario,
-            "password": password
-        }
-
-        guardado = (
-            self.gestor_configuracion.guardar(
-                configuracion
-            )
-        )
-
-        if not guardado:
-
-            QMessageBox.critical(
-                self,
-                "Error",
-                "No se pudo guardar la configuración."
-            )
-
-            return
-
-        QMessageBox.information(
-            self,
-            "Configuración guardada",
-            "La configuración de MySQL se guardó correctamente."
-        )
-
-    # ==========================================================
-    # API
-    # ==========================================================
-
-    def crear_pagina_api(self):
-
-        pagina = QFrame()
-
-        pagina.setObjectName(
-            "panel"
-        )
-
-        layout = QVBoxLayout()
 
         layout.setContentsMargins(
-            25,
             20,
-            25,
+            20,
+            20,
             20
         )
 
-        titulo = QLabel(
-            "Configuración de API"
+        grupo = QGroupBox(
+            "Configuración de importación"
         )
 
-        titulo.setObjectName(
-            "tituloSeccion"
+        formulario = QFormLayout()
+
+        self.importacion_tipo = QComboBox()
+
+        self.importacion_tipo.addItem(
+            "Excel",
+            "excel"
         )
 
-        layout.addWidget(
-            titulo
+        self.importacion_tipo.addItem(
+            "CSV",
+            "csv"
         )
 
-        layout.addWidget(
-            QLabel(
-                "Configure una API externa como fuente "
-                "de información."
-            )
+        self.importacion_modo = QComboBox()
+
+        self.importacion_modo.addItem(
+            "Carpeta",
+            "carpeta"
         )
 
-        self.api_url = QLineEdit()
-
-        self.api_url.setPlaceholderText(
-            "https://servidor/api"
+        self.importacion_modo.addItem(
+            "Archivo único",
+            "archivo"
         )
 
-        layout.addWidget(
-            QLabel(
-                "URL:"
-            )
+        self.importacion_modo.addItem(
+            "Múltiples archivos",
+            "multiples"
         )
 
-        layout.addWidget(
-            self.api_url
+        formulario.addRow(
+            "Tipo:",
+            self.importacion_tipo
         )
 
-        self.api_metodo = QComboBox()
-
-        self.api_metodo.addItems([
-            "REST",
-            "JSON"
-        ])
-
-        layout.addWidget(
-            QLabel(
-                "Tipo:"
-            )
+        formulario.addRow(
+            "Modo:",
+            self.importacion_modo
         )
 
-        layout.addWidget(
-            self.api_metodo
-        )
-
-        self.api_token = QLineEdit()
-
-        self.api_token.setPlaceholderText(
-            "Token de autenticación"
-        )
-
-        self.api_token.setEchoMode(
-            QLineEdit.EchoMode.Password
+        grupo.setLayout(
+            formulario
         )
 
         layout.addWidget(
-            QLabel(
-                "Token:"
-            )
+            grupo
+        )
+
+        # ----------------------------------------------
+        # EXTENSIONES
+        # ----------------------------------------------
+
+        grupo_extensiones = QGroupBox(
+            "Extensiones permitidas"
+        )
+
+        layout_extensiones = QVBoxLayout()
+
+        self.extension_xlsx = QCheckBox(
+            ".xlsx"
+        )
+
+        self.extension_xls = QCheckBox(
+            ".xls"
+        )
+
+        self.extension_csv = QCheckBox(
+            ".csv"
+        )
+
+        layout_extensiones.addWidget(
+            self.extension_xlsx
+        )
+
+        layout_extensiones.addWidget(
+            self.extension_xls
+        )
+
+        layout_extensiones.addWidget(
+            self.extension_csv
+        )
+
+        grupo_extensiones.setLayout(
+            layout_extensiones
         )
 
         layout.addWidget(
-            self.api_token
-        )
-
-        boton = QPushButton(
-            "Guardar configuración"
-        )
-
-        boton.clicked.connect(
-            lambda: QMessageBox.information(
-                self,
-                "Configuración",
-                "Configuración de API guardada."
-            )
-        )
-
-        layout.addWidget(
-            boton
+            grupo_extensiones
         )
 
         layout.addStretch()
 
-        pagina.setLayout(
-            layout
-        )
-
         return pagina
 
-    # ==========================================================
-    # PANEL DE ASISTENCIA
-    # ==========================================================
+    # ==================================================
+    # ASISTENCIA
+    # ==================================================
 
-    def crear_panel_asistencia(self):
+    def crear_pagina_asistencia(self):
 
-        panel = QFrame()
+        pagina = QWidget()
 
-        panel.setObjectName(
-            "panel"
+        layout = QVBoxLayout(
+            pagina
         )
 
-        layout = QVBoxLayout()
-
         layout.setContentsMargins(
-            25,
             20,
-            25,
+            20,
+            20,
             20
         )
 
-        layout.setSpacing(12)
+        # ----------------------------------------------
+        # HORARIO
+        # ----------------------------------------------
 
-        # ------------------------------------------
-        # HORA DE ENTRADA
-        # ------------------------------------------
-
-        etiqueta_entrada = QLabel(
-            "Hora de entrada:"
+        grupo_horario = QGroupBox(
+            "Horario laboral"
         )
 
-        self.hora_entrada = QTimeEdit()
+        formulario_horario = QFormLayout()
 
-        self.hora_entrada.setDisplayFormat(
-            "HH:mm"
+        self.hora_entrada = QLineEdit()
+
+        self.hora_entrada.setPlaceholderText(
+            "HH:MM"
         )
 
-        self.hora_entrada.setMinimumHeight(
-            38
+        self.hora_salida = QLineEdit()
+
+        self.hora_salida.setPlaceholderText(
+            "HH:MM"
         )
 
-        layout.addWidget(
-            etiqueta_entrada
-        )
-
-        layout.addWidget(
+        formulario_horario.addRow(
+            "Hora de entrada:",
             self.hora_entrada
         )
 
-        # ------------------------------------------
-        # HORA DE SALIDA
-        # ------------------------------------------
-
-        etiqueta_salida = QLabel(
-            "Hora de salida:"
-        )
-
-        self.hora_salida = QTimeEdit()
-
-        self.hora_salida.setDisplayFormat(
-            "HH:mm"
-        )
-
-        self.hora_salida.setMinimumHeight(
-            38
-        )
-
-        layout.addWidget(
-            etiqueta_salida
-        )
-
-        layout.addWidget(
+        formulario_horario.addRow(
+            "Hora de salida:",
             self.hora_salida
         )
 
-        # ------------------------------------------
-        # TOLERANCIA
-        # ------------------------------------------
-
-        etiqueta_tolerancia = QLabel(
-            "Tolerancia de entrada (minutos):"
+        grupo_horario.setLayout(
+            formulario_horario
         )
+
+        layout.addWidget(
+            grupo_horario
+        )
+
+        # ----------------------------------------------
+        # TOLERANCIA
+        # ----------------------------------------------
+
+        grupo_tolerancia = QGroupBox(
+            "Tolerancia"
+        )
+
+        formulario_tolerancia = QFormLayout()
 
         self.tolerancia_entrada = QSpinBox()
 
-        self.tolerancia_entrada.setMinimum(
-            0
+        self.tolerancia_entrada.setRange(
+            0,
+            180
         )
 
-        self.tolerancia_entrada.setMaximum(
-            120
+        self.tolerancia_entrada.setSuffix(
+            " minutos"
         )
 
-        self.tolerancia_entrada.setValue(
-            0
-        )
-
-        self.tolerancia_entrada.setMinimumHeight(
-            38
-        )
-
-        layout.addWidget(
-            etiqueta_tolerancia
-        )
-
-        layout.addWidget(
+        formulario_tolerancia.addRow(
+            "Tolerancia de entrada:",
             self.tolerancia_entrada
         )
 
-        # ------------------------------------------
-        # BOTÓN GUARDAR
-        # ------------------------------------------
-
-        boton_guardar = QPushButton(
-            "Guardar configuración de asistencia"
-        )
-
-        boton_guardar.setMinimumHeight(
-            42
-        )
-
-        boton_guardar.clicked.connect(
-            self.guardar_configuracion_asistencia
+        grupo_tolerancia.setLayout(
+            formulario_tolerancia
         )
 
         layout.addWidget(
-            boton_guardar
+            grupo_tolerancia
+        )
+
+        # ----------------------------------------------
+        # REGLAS
+        # ----------------------------------------------
+
+        grupo_reglas = QGroupBox(
+            "Reglas de procesamiento"
+        )
+
+        layout_reglas = QVBoxLayout()
+
+        self.regla_primera = QCheckBox(
+            "La primera marcación corresponde a la entrada"
+        )
+
+        self.regla_ultima = QCheckBox(
+            "La última marcación corresponde a la salida"
+        )
+
+        self.regla_generar_salida = QCheckBox(
+            "Generar salida cuando exista una sola marcación"
+        )
+
+        layout_reglas.addWidget(
+            self.regla_primera
+        )
+
+        layout_reglas.addWidget(
+            self.regla_ultima
+        )
+
+        layout_reglas.addWidget(
+            self.regla_generar_salida
+        )
+
+        grupo_reglas.setLayout(
+            layout_reglas
+        )
+
+        layout.addWidget(
+            grupo_reglas
         )
 
         layout.addStretch()
 
-        panel.setLayout(
-            layout
+        return pagina
+
+    # ==================================================
+    # MODULOS
+    # ==================================================
+
+    def crear_pagina_modulos(self):
+
+        pagina = QWidget()
+
+        layout = QVBoxLayout(
+            pagina
         )
 
-        return panel
-
-    # ==========================================================
-    # CARGAR CONFIGURACIÓN DE ASISTENCIA
-    # ==========================================================
-
-    def cargar_configuracion_asistencia(self):
-
-        configuracion = (
-            self.gestor_configuracion.cargar()
+        layout.setContentsMargins(
+            20,
+            20,
+            20,
+            20
         )
 
-        asistencia = configuracion.get(
+        grupo = QGroupBox(
+            "Módulos disponibles"
+        )
+
+        layout_modulos = QVBoxLayout()
+
+        self.modulo_permisos = QCheckBox(
+            "Permisos"
+        )
+
+        self.modulo_remuneraciones = QCheckBox(
+            "Remuneraciones"
+        )
+
+        layout_modulos.addWidget(
+            self.modulo_permisos
+        )
+
+        layout_modulos.addWidget(
+            self.modulo_remuneraciones
+        )
+
+        grupo.setLayout(
+            layout_modulos
+        )
+
+        layout.addWidget(
+            grupo
+        )
+
+        aviso = QLabel(
+            "Las reglas institucionales de cada módulo "
+            "se configurarán posteriormente. "
+            "No están fijadas en el código."
+        )
+
+        aviso.setWordWrap(
+            True
+        )
+
+        layout.addWidget(
+            aviso
+        )
+
+        layout.addStretch()
+
+        return pagina
+
+    # ==================================================
+    # CARGAR CONFIGURACION
+    # ==================================================
+
+    def cargar_configuracion(self):
+
+        organizacion = self.configuracion.get(
+            "organizacion",
+            {}
+        )
+
+        self.organizacion_nombre.setText(
+            organizacion.get(
+                "nombre",
+                ""
+            )
+        )
+
+        self.organizacion_codigo.setText(
+            organizacion.get(
+                "codigo",
+                ""
+            )
+        )
+
+        self.organizacion_direccion.setText(
+            organizacion.get(
+                "direccion",
+                ""
+            )
+        )
+
+        self.organizacion_telefono.setText(
+            organizacion.get(
+                "telefono",
+                ""
+            )
+        )
+
+        # ----------------------------------------------
+        # FUENTE DE DATOS
+        # ----------------------------------------------
+
+        fuente = self.configuracion.get(
+            "fuente_datos",
+            {}
+        )
+
+        tipo = fuente.get(
+            "tipo",
+            "mysql"
+        )
+
+        indice = self.fuente_tipo.findData(
+            tipo
+        )
+
+        if indice >= 0:
+            self.fuente_tipo.setCurrentIndex(
+                indice
+            )
+
+        mysql = fuente.get(
+            "mysql",
+            {}
+        )
+
+        self.bd_servidor.setText(
+            str(
+                mysql.get(
+                    "servidor",
+                    ""
+                )
+            )
+        )
+
+        self.bd_puerto.setValue(
+            int(
+                mysql.get(
+                    "puerto",
+                    3306
+                )
+            )
+        )
+
+        self.bd_base.setText(
+            str(
+                mysql.get(
+                    "base_datos",
+                    ""
+                )
+            )
+        )
+
+        self.bd_usuario.setText(
+            str(
+                mysql.get(
+                    "usuario",
+                    ""
+                )
+            )
+        )
+
+        self.bd_password.setText(
+            str(
+                mysql.get(
+                    "password",
+                    ""
+                )
+            )
+        )
+
+        # ----------------------------------------------
+        # IMPORTACION
+        # ----------------------------------------------
+
+        importacion = self.configuracion.get(
+            "importacion",
+            {}
+        )
+
+        tipo_importacion = importacion.get(
+            "tipo",
+            "excel"
+        )
+
+        indice = self.importacion_tipo.findData(
+            tipo_importacion
+        )
+
+        if indice >= 0:
+            self.importacion_tipo.setCurrentIndex(
+                indice
+            )
+
+        modo = importacion.get(
+            "modo",
+            "carpeta"
+        )
+
+        indice = self.importacion_modo.findData(
+            modo
+        )
+
+        if indice >= 0:
+            self.importacion_modo.setCurrentIndex(
+                indice
+            )
+
+        extensiones = importacion.get(
+            "extensiones",
+            []
+        )
+
+        self.extension_xlsx.setChecked(
+            ".xlsx" in extensiones
+        )
+
+        self.extension_xls.setChecked(
+            ".xls" in extensiones
+        )
+
+        self.extension_csv.setChecked(
+            ".csv" in extensiones
+        )
+
+        # ----------------------------------------------
+        # ASISTENCIA
+        # ----------------------------------------------
+
+        asistencia = self.configuracion.get(
             "asistencia",
             {}
         )
@@ -1171,220 +866,340 @@ class PaginaConfiguracion(QWidget):
             {}
         )
 
-        hora_entrada = horario.get(
-            "hora_entrada",
-            "08:00"
+        reglas = asistencia.get(
+            "reglas",
+            {}
         )
 
-        hora_salida = horario.get(
-            "hora_salida",
-            "17:00"
-        )
-
-        minutos = tolerancia.get(
-            "minutos_entrada",
-            0
-        )
-
-        # ------------------------------------------
-        # HORA DE ENTRADA
-        # ------------------------------------------
-
-        try:
-
-            hora_e, minuto_e = map(
-                int,
-                hora_entrada.split(":")[:2]
+        self.hora_entrada.setText(
+            horario.get(
+                "hora_entrada",
+                "08:00"
             )
+        )
 
-            self.hora_entrada.setTime(
-                QTime(
-                    hora_e,
-                    minuto_e
-                )
+        self.hora_salida.setText(
+            horario.get(
+                "hora_salida",
+                "17:00"
             )
+        )
 
-        except (
-            ValueError,
-            AttributeError
-        ):
-
-            self.hora_entrada.setTime(
-                QTime(
-                    8,
+        self.tolerancia_entrada.setValue(
+            int(
+                tolerancia.get(
+                    "minutos_entrada",
                     0
                 )
             )
+        )
 
-        # ------------------------------------------
-        # HORA DE SALIDA
-        # ------------------------------------------
+        self.regla_primera.setChecked(
+            reglas.get(
+                "primera_marcacion_es_entrada",
+                True
+            )
+        )
+
+        self.regla_ultima.setChecked(
+            reglas.get(
+                "ultima_marcacion_es_salida",
+                True
+            )
+        )
+
+        self.regla_generar_salida.setChecked(
+            reglas.get(
+                "generar_salida_si_solo_hay_una_marcacion",
+                False
+            )
+        )
+
+        # ----------------------------------------------
+        # MODULOS
+        # ----------------------------------------------
+
+        permisos = self.configuracion.get(
+            "permisos",
+            {}
+        )
+
+        remuneraciones = self.configuracion.get(
+            "remuneraciones",
+            {}
+        )
+
+        self.modulo_permisos.setChecked(
+            permisos.get(
+                "habilitado",
+                True
+            )
+        )
+
+        self.modulo_remuneraciones.setChecked(
+            remuneraciones.get(
+                "habilitado",
+                True
+            )
+        )
+
+    # ==================================================
+    # CAMBIAR CAMPOS DE FUENTE
+    # ==================================================
+
+    def actualizar_campos_fuente(self):
+
+        tipo = self.fuente_tipo.currentData()
+
+        es_bd = tipo in (
+            "mysql",
+            "bd"
+        )
+
+        self.bd_servidor.setEnabled(
+            es_bd
+        )
+
+        self.bd_puerto.setEnabled(
+            es_bd
+        )
+
+        self.bd_base.setEnabled(
+            es_bd
+        )
+
+        self.bd_usuario.setEnabled(
+            es_bd
+        )
+
+        self.bd_password.setEnabled(
+            es_bd
+        )
+
+        self.boton_probar.setEnabled(
+            tipo == "mysql"
+        )
+
+        if not es_bd:
+
+            self.estado_fuente.setText(
+                "La configuración de esta fuente "
+                "se implementará en la siguiente etapa."
+            )
+
+    # ==================================================
+    # PROBAR CONEXION
+    # ==================================================
+
+    def probar_conexion(self):
+
+        if not self.gestor_fuentes:
+
+            QMessageBox.warning(
+                self,
+                "Fuente de datos",
+                "No existe un gestor de fuentes."
+            )
+
+            return
+
+        tipo = self.fuente_tipo.currentData()
+
+        if tipo != "mysql":
+
+            QMessageBox.information(
+                self,
+                "Fuente de datos",
+                "La prueba de conexión está "
+                "disponible actualmente para MySQL."
+            )
+
+            return
 
         try:
 
-            hora_s, minuto_s = map(
-                int,
-                hora_salida.split(":")[:2]
+            self.gestor_fuentes.configurar_mysql(
+                servidor=self.bd_servidor.text().strip(),
+                puerto=self.bd_puerto.value(),
+                base_datos=self.bd_base.text().strip(),
+                usuario=self.bd_usuario.text().strip(),
+                password=self.bd_password.text()
             )
 
-            self.hora_salida.setTime(
-                QTime(
-                    hora_s,
-                    minuto_s
+            resultado = (
+                self.gestor_fuentes.conectar()
+            )
+
+            if resultado:
+
+                self.estado_fuente.setText(
+                    "Conexión exitosa."
                 )
-            )
 
-        except (
-            ValueError,
-            AttributeError
-        ):
-
-            self.hora_salida.setTime(
-                QTime(
-                    17,
-                    0
+                QMessageBox.information(
+                    self,
+                    "Conexión",
+                    "La conexión con la fuente "
+                    "de datos fue exitosa."
                 )
-            )
 
-        # ------------------------------------------
-        # TOLERANCIA
-        # ------------------------------------------
+            else:
 
-        try:
+                error = (
+                    self.gestor_fuentes.obtener_error()
+                    or "Error desconocido."
+                )
 
-            self.tolerancia_entrada.setValue(
-                int(minutos)
-            )
+                self.estado_fuente.setText(
+                    "No se pudo establecer la conexión."
+                )
 
-        except (
-            ValueError,
-            TypeError
-        ):
+                QMessageBox.critical(
+                    self,
+                    "Error de conexión",
+                    f"No se pudo conectar:\n\n{error}"
+                )
 
-            self.tolerancia_entrada.setValue(
-                0
-            )
-
-    # ==========================================================
-    # GUARDAR CONFIGURACIÓN DE ASISTENCIA
-    # ==========================================================
-
-    def guardar_configuracion_asistencia(self):
-
-        hora_entrada = (
-            self.hora_entrada
-            .time()
-            .toString("HH:mm")
-        )
-
-        hora_salida = (
-            self.hora_salida
-            .time()
-            .toString("HH:mm")
-        )
-
-        tolerancia = (
-            self.tolerancia_entrada.value()
-        )
-
-        configuracion = (
-            self.gestor_configuracion.cargar()
-        )
-
-        # ------------------------------------------
-        # MANTENER CONFIGURACIÓN EXISTENTE
-        # ------------------------------------------
-
-        if "asistencia" not in configuracion:
-
-            configuracion["asistencia"] = {}
-
-        configuracion["asistencia"]["horario"] = {
-            "hora_entrada": hora_entrada,
-            "hora_salida": hora_salida
-        }
-
-        configuracion["asistencia"]["tolerancia"] = {
-            "minutos_entrada": tolerancia
-        }
-
-        # ------------------------------------------
-        # REGLAS POR DEFECTO
-        # ------------------------------------------
-
-        if "reglas" not in configuracion["asistencia"]:
-
-            configuracion["asistencia"]["reglas"] = {
-                "primera_marcacion_es_entrada": True,
-                "ultima_marcacion_es_salida": True,
-                "generar_salida_si_solo_hay_una_marcacion": False
-            }
-
-        guardado = (
-            self.gestor_configuracion.guardar(
-                configuracion
-            )
-        )
-
-        if not guardado:
+        except Exception as error:
 
             QMessageBox.critical(
                 self,
                 "Error",
-                "No se pudo guardar la configuración "
-                "de asistencia."
+                f"Ocurrió un error:\n\n{error}"
             )
 
-            return
+    # ==================================================
+    # GUARDAR CONFIGURACION
+    # ==================================================
 
-        QMessageBox.information(
-            self,
-            "Configuración guardada",
-            "La configuración de asistencia "
-            "se guardó correctamente."
-        )
+    def guardar_configuracion(self):
 
-    # ==========================================================
-    # SELECCIONAR CARPETA
-    # ==========================================================
-
-    def seleccionar_carpeta(self):
-
-        carpeta = (
-            QFileDialog.getExistingDirectory(
-                self,
-                "Seleccionar carpeta"
-            )
-        )
-
-        if carpeta:
-
-            self.excel_ruta.setText(
-                carpeta
-            )
-
-    # ==========================================================
-    # GUARDAR EXCEL
-    # ==========================================================
-
-    def guardar_excel(self):
-
-        ruta = (
-            self.excel_ruta.text().strip()
-        )
-
-        if not ruta:
+        if not self.gestor_configuracion:
 
             QMessageBox.warning(
                 self,
                 "Configuración",
-                "Seleccione una carpeta."
+                "No existe un gestor de configuración."
             )
 
             return
 
-        QMessageBox.information(
-            self,
-            "Configuración",
-            "Configuración de Excel guardada."
+        self.configuracion["organizacion"] = {
+            "nombre": self.organizacion_nombre.text().strip(),
+            "codigo": self.organizacion_codigo.text().strip(),
+            "direccion": self.organizacion_direccion.text().strip(),
+            "telefono": self.organizacion_telefono.text().strip()
+        }
+
+        # ----------------------------------------------
+        # FUENTE DE DATOS
+        # ----------------------------------------------
+
+        tipo_fuente = (
+            self.fuente_tipo.currentData()
         )
+
+        self.configuracion["fuente_datos"] = {
+            "tipo": tipo_fuente,
+            "mysql": {
+                "servidor": self.bd_servidor.text().strip(),
+                "puerto": self.bd_puerto.value(),
+                "base_datos": self.bd_base.text().strip(),
+                "usuario": self.bd_usuario.text().strip(),
+                "password": self.bd_password.text()
+            }
+        }
+
+        # ----------------------------------------------
+        # IMPORTACION
+        # ----------------------------------------------
+
+        extensiones = []
+
+        if self.extension_xlsx.isChecked():
+            extensiones.append(".xlsx")
+
+        if self.extension_xls.isChecked():
+            extensiones.append(".xls")
+
+        if self.extension_csv.isChecked():
+            extensiones.append(".csv")
+
+        self.configuracion["importacion"] = {
+            "tipo": self.importacion_tipo.currentData(),
+            "modo": self.importacion_modo.currentData(),
+            "extensiones": extensiones
+        }
+
+        # ----------------------------------------------
+        # ASISTENCIA
+        # ----------------------------------------------
+
+        self.configuracion["asistencia"] = {
+            "horario": {
+                "hora_entrada": self.hora_entrada.text().strip(),
+                "hora_salida": self.hora_salida.text().strip()
+            },
+
+            "tolerancia": {
+                "minutos_entrada": (
+                    self.tolerancia_entrada.value()
+                )
+            },
+
+            "reglas": {
+                "primera_marcacion_es_entrada": (
+                    self.regla_primera.isChecked()
+                ),
+
+                "ultima_marcacion_es_salida": (
+                    self.regla_ultima.isChecked()
+                ),
+
+                "generar_salida_si_solo_hay_una_marcacion": (
+                    self.regla_generar_salida.isChecked()
+                )
+            }
+        }
+
+        # ----------------------------------------------
+        # MODULOS
+        # ----------------------------------------------
+
+        self.configuracion["permisos"] = {
+            "habilitado": (
+                self.modulo_permisos.isChecked()
+            )
+        }
+
+        self.configuracion["remuneraciones"] = {
+            "habilitado": (
+                self.modulo_remuneraciones.isChecked()
+            )
+        }
+
+        # ----------------------------------------------
+        # GUARDAR
+        # ----------------------------------------------
+
+        resultado = (
+            self.gestor_configuracion.guardar(
+                self.configuracion
+            )
+        )
+
+        if resultado:
+
+            QMessageBox.information(
+                self,
+                "Configuración",
+                "La configuración fue guardada correctamente."
+            )
+
+        else:
+
+            QMessageBox.critical(
+                self,
+                "Error",
+                "No se pudo guardar la configuración."
+            )

@@ -1,4 +1,10 @@
 {
+    "organizacion": {
+        "nombre": "",
+        "codigo": "",
+        "direccion": "",
+        "telefono": ""
+    },
     "fuente_datos": {
         "tipo": "mysql",
         "mysql": {
@@ -9,18 +15,42 @@
             "password": ""
         }
     },
+    "importacion": {
+        "tipo": "excel",
+        "modo": "carpeta",
+        "extensiones": [
+            ".xlsx",
+            ".xls"
+        ]
+    },
     "asistencia": {
         "horario": {
             "hora_entrada": "08:00",
-            "hora_salida": "02:00"
+            "hora_salida": "17:00"
         },
         "tolerancia": {
-            "minutos_entrada": 5
+            "minutos_entrada": 10
         },
         "reglas": {
             "primera_marcacion_es_entrada": true,
             "ultima_marcacion_es_salida": true,
             "generar_salida_si_solo_hay_una_marcacion": false
         }
+    },
+    "permisos": {
+        "habilitado": true
+    },
+    "remuneraciones": {
+        "habilitado": true
+    },
+    "reportes": {
+        "formato_predeterminado": "PDF"
+    },
+    "seguridad": {
+        "sesion_habilitada": false
+    },
+    "sistema": {
+        "idioma": "es",
+        "tema": "institucional"
     }
 }

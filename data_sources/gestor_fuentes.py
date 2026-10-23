@@ -4,13 +4,8 @@ from data_sources.fuente_mysql import FuenteMySQL
 class GestorFuentes:
 
     def __init__(self):
-
         self.fuente_actual = None
-        self.tipo_fuente = None
-
-    # ==========================================
-    # CONFIGURAR MYSQL
-    # ==========================================
+        self.ultimo_error = None
 
     def configurar_mysql(
         self,
@@ -20,7 +15,6 @@ class GestorFuentes:
         usuario,
         password
     ):
-
         self.fuente_actual = FuenteMySQL(
             servidor=servidor,
             puerto=puerto,
@@ -29,13 +23,9 @@ class GestorFuentes:
             password=password
         )
 
-        self.tipo_fuente = "mysql"
-
-    # ==========================================
-    # CARGAR CONFIGURACIÓN
-    # ==========================================
-
     def cargar_desde_configuracion(self, configuracion):
+        self.fuente_actual = None
+        self.ultimo_error = None
 
         fuente_datos = configuracion.get(
             "fuente_datos",
@@ -44,83 +34,91 @@ class GestorFuentes:
 
         tipo = fuente_datos.get("tipo")
 
-        if tipo != "mysql":
+        # Configuración actual
+        if tipo == "mysql":
 
-            self.fuente_actual = None
-            self.tipo_fuente = None
+            configuracion_mysql = fuente_datos.get(
+                "mysql",
+                {}
+            )
 
-            return False
+            self.configurar_mysql(
+                servidor=configuracion_mysql.get(
+                    "servidor",
+                    ""
+                ),
+                puerto=configuracion_mysql.get(
+                    "puerto",
+                    3306
+                ),
+                base_datos=configuracion_mysql.get(
+                    "base_datos",
+                    ""
+                ),
+                usuario=configuracion_mysql.get(
+                    "usuario",
+                    ""
+                ),
+                password=configuracion_mysql.get(
+                    "password",
+                    ""
+                )
+            )
 
-        mysql = fuente_datos.get(
-            "mysql",
-            {}
-        )
+        # Compatibilidad con configuraciones antiguas
+        elif tipo == "bd":
 
-        servidor = mysql.get(
-            "servidor",
-            ""
-        )
+            configuracion_bd = fuente_datos.get(
+                "base_datos",
+                {}
+            )
 
-        puerto = mysql.get(
-            "puerto",
-            3306
-        )
-
-        base_datos = mysql.get(
-            "base_datos",
-            ""
-        )
-
-        usuario = mysql.get(
-            "usuario",
-            ""
-        )
-
-        password = mysql.get(
-            "password",
-            ""
-        )
-
-        if not servidor or not base_datos or not usuario:
-
-            self.fuente_actual = None
-            self.tipo_fuente = None
-
-            return False
-
-        self.configurar_mysql(
-            servidor=servidor,
-            puerto=puerto,
-            base_datos=base_datos,
-            usuario=usuario,
-            password=password
-        )
-
-        return True
-
-    # ==========================================
-    # CONECTAR
-    # ==========================================
+            self.configurar_mysql(
+                servidor=configuracion_bd.get(
+                    "servidor",
+                    ""
+                ),
+                puerto=configuracion_bd.get(
+                    "puerto",
+                    3306
+                ),
+                base_datos=configuracion_bd.get(
+                    "base",
+                    ""
+                ),
+                usuario=configuracion_bd.get(
+                    "usuario",
+                    ""
+                ),
+                password=configuracion_bd.get(
+                    "password",
+                    ""
+                )
+            )
 
     def conectar(self):
 
         if not self.fuente_actual:
+            self.ultimo_error = (
+                "No hay una fuente de datos configurada."
+            )
             return False
 
-        return self.fuente_actual.conectar()
+        resultado = self.fuente_actual.conectar()
 
-    # ==========================================
-    # DESCONECTAR
-    # ==========================================
+        if resultado:
+            self.ultimo_error = None
+        else:
+            self.ultimo_error = (
+                self.fuente_actual.ultimo_error
+            )
+
+        return resultado
 
     def desconectar(self):
 
         if self.fuente_actual:
             self.fuente_actual.desconectar()
-
-    # ==========================================
-    # ESTADO DE LA FUENTE
-    # ==========================================
 
     def esta_disponible(self):
 
@@ -129,23 +127,13 @@ class GestorFuentes:
 
         return self.fuente_actual.esta_disponible()
 
-    # ==========================================
-    # OBTENER ERROR
-    # ==========================================
-
     def obtener_error(self):
 
-        if not self.fuente_actual:
+        return self.ultimo_error
 
-            return (
-                "No hay una fuente de datos configurada."
-            )
-
-        return self.fuente_actual.ultimo_error
-
-    # ==========================================
-    # EMPLEADOS
-    # ==========================================
+    # ---------------------------------------------------------
+    # PERSONAL
+    # ---------------------------------------------------------
 
     def obtener_empleados(self):
 
@@ -154,36 +142,31 @@ class GestorFuentes:
 
         return self.fuente_actual.obtener_empleados()
 
-    # ==========================================
-    # CREAR EMPLEADO
-    # ==========================================
-
     def crear_empleado(
         self,
         id_usuario,
         nombre,
         apellido,
         numero_tarjeta,
-        estado
+        estado=True,
+        fecha_ingreso=None,
+        fecha_cese=None
     ):
 
         if not self.esta_disponible():
-
             raise Exception(
                 "La fuente de datos no está disponible."
             )
 
         return self.fuente_actual.crear_empleado(
-            id_usuario,
-            nombre,
-            apellido,
-            numero_tarjeta,
-            estado
+            id_usuario=id_usuario,
+            nombre=nombre,
+            apellido=apellido,
+            numero_tarjeta=numero_tarjeta,
+            estado=estado,
+            fecha_ingreso=fecha_ingreso,
+            fecha_cese=fecha_cese
         )
-
-    # ==========================================
-    # ACTUALIZAR EMPLEADO
-    # ==========================================
 
     def actualizar_empleado(
         self,
@@ -192,32 +175,30 @@ class GestorFuentes:
         nombre,
         apellido,
         numero_tarjeta,
-        estado
+        estado=True,
+        fecha_ingreso=None,
+        fecha_cese=None
     ):
 
         if not self.esta_disponible():
-
             raise Exception(
                 "La fuente de datos no está disponible."
             )
 
         return self.fuente_actual.actualizar_empleado(
-            id_usuario_original,
-            id_usuario,
-            nombre,
-            apellido,
-            numero_tarjeta,
-            estado
+            id_usuario_original=id_usuario_original,
+            id_usuario=id_usuario,
+            nombre=nombre,
+            apellido=apellido,
+            numero_tarjeta=numero_tarjeta,
+            estado=estado,
+            fecha_ingreso=fecha_ingreso,
+            fecha_cese=fecha_cese
         )
-
-    # ==========================================
-    # DESACTIVAR EMPLEADO
-    # ==========================================
 
     def desactivar_empleado(self, id_usuario):
 
         if not self.esta_disponible():
-
             raise Exception(
                 "La fuente de datos no está disponible."
             )
@@ -226,15 +207,16 @@ class GestorFuentes:
             id_usuario
         )
 
-    # ==========================================
+    # ---------------------------------------------------------
     # ASISTENCIA
-    # ==========================================
+    # ---------------------------------------------------------
 
     def obtener_asistencia(
-    self,
-    fecha_inicio=None,
-    fecha_fin=None):
-        
+        self,
+        fecha_inicio=None,
+        fecha_fin=None
+    ):
+
         if not self.esta_disponible():
             return []
 
@@ -242,16 +224,13 @@ class GestorFuentes:
             fecha_inicio=fecha_inicio,
             fecha_fin=fecha_fin
         )
-    
-     # ==========================================
-    # MARCACIONES
-    # ==========================================
 
     def obtener_marcaciones(
-    self,
-    fecha_inicio=None,
-    fecha_fin=None
-):
+        self,
+        fecha_inicio=None,
+        fecha_fin=None
+    ):
+
         if not self.esta_disponible():
             return []
 
@@ -259,10 +238,6 @@ class GestorFuentes:
             fecha_inicio=fecha_inicio,
             fecha_fin=fecha_fin
         )
-    
-     # ==========================================
-    # GUARDAR ASISTENCIA
-    # ==========================================
 
     def guardar_asistencia_diaria(self, registros):
 
@@ -273,4 +248,22 @@ class GestorFuentes:
 
         return self.fuente_actual.guardar_asistencia_diaria(
             registros
+        )
+
+    # ---------------------------------------------------------
+    # CALENDARIO
+    # ---------------------------------------------------------
+
+    def obtener_calendario_laboral(
+        self,
+        fecha_inicio=None,
+        fecha_fin=None
+    ):
+
+        if not self.esta_disponible():
+            return []
+
+        return self.fuente_actual.obtener_calendario_laboral(
+            fecha_inicio=fecha_inicio,
+            fecha_fin=fecha_fin
         )

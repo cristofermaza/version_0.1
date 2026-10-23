@@ -34,6 +34,17 @@ class PaginaAsistencia(QWidget):
 
         self.datos_asistencia = []
 
+        # --------------------------------------
+        # SERVICIO DE ASISTENCIA
+        # --------------------------------------
+
+        configuracion = self.gestor_configuracion.cargar()
+
+        self.servicio_asistencia = ServicioAsistencia(
+            self.gestor_fuentes,
+            configuracion
+        )
+
         self.construir_interfaz()
         self.cargar_asistencia()
 
@@ -133,8 +144,8 @@ class PaginaAsistencia(QWidget):
                 numero
             )
 
-        # Septiembre
         self.selector_mes.setCurrentIndex(8)
+
         self.selector_mes.currentIndexChanged.connect(
             self.cargar_asistencia
         )
@@ -159,6 +170,7 @@ class PaginaAsistencia(QWidget):
         self.selector_anio.setValue(
             2026
         )
+
         self.selector_anio.valueChanged.connect(
             self.cargar_asistencia
         )
@@ -274,9 +286,14 @@ class PaginaAsistencia(QWidget):
             self.tabla
         )
 
+    # ==========================================
+    # OBTENER PERIODO
+    # ==========================================
+
     def obtener_periodo_seleccionado(self):
 
         mes = self.selector_mes.currentData()
+
         anio = self.selector_anio.value()
 
         fecha_inicio = date(
@@ -311,6 +328,8 @@ class PaginaAsistencia(QWidget):
 
         self.tabla.setRowCount(0)
 
+        self.datos_asistencia = []
+
         if not self.gestor_fuentes:
 
             self.estado.setText(
@@ -330,13 +349,21 @@ class PaginaAsistencia(QWidget):
 
         try:
 
+            self.estado.setText(
+                "Consultando asistencia..."
+            )
+
             fecha_inicio, fecha_fin = (
                 self.obtener_periodo_seleccionado()
             )
 
+            # ----------------------------------
+            # NUEVO FLUJO DE EVALUACIÓN
+            # ----------------------------------
+
             datos = (
-                self.gestor_fuentes
-                .obtener_asistencia(
+                self.servicio_asistencia
+                .obtener_evaluacion_periodo(
                     fecha_inicio=fecha_inicio,
                     fecha_fin=fecha_fin
                 )
@@ -402,31 +429,13 @@ class PaginaAsistencia(QWidget):
         # OBTENER PERIODO
         # --------------------------------------
 
-        mes = self.selector_mes.currentData()
-
-        anio = self.selector_anio.value()
-
-        fecha_inicio = date(
-            anio,
-            mes,
-            1
+        fecha_inicio, fecha_fin = (
+            self.obtener_periodo_seleccionado()
         )
 
-        if mes == 12:
+        mes = self.selector_mes.currentText()
 
-            fecha_fin = date(
-                anio + 1,
-                1,
-                1
-            )
-
-        else:
-
-            fecha_fin = date(
-                anio,
-                mes + 1,
-                1
-            )
+        anio = self.selector_anio.value()
 
         # --------------------------------------
         # CONFIRMACIÓN
@@ -437,9 +446,7 @@ class PaginaAsistencia(QWidget):
             "Procesar asistencia",
             "¿Desea procesar las marcaciones "
             "del periodo seleccionado?\n\n"
-            f"Periodo: "
-            f"{self.selector_mes.currentText()} "
-            f"{anio}",
+            f"Periodo: {mes} {anio}",
             QMessageBox.Yes |
             QMessageBox.No
         )
@@ -458,17 +465,17 @@ class PaginaAsistencia(QWidget):
                 "Procesando asistencia..."
             )
 
-            servicio = ServicioAsistencia(
-                self.gestor_fuentes,
-                self.gestor_configuracion
-            )
-
             cantidad = (
-                servicio.procesar_asistencia(
+                self.servicio_asistencia
+                .procesar_asistencia(
                     fecha_inicio=fecha_inicio,
                     fecha_fin=fecha_fin
                 )
             )
+
+            # ----------------------------------
+            # VOLVER A CONSULTAR
+            # ----------------------------------
 
             self.cargar_asistencia()
 
@@ -477,9 +484,7 @@ class PaginaAsistencia(QWidget):
                 "Proceso completado",
                 "El procesamiento de asistencia "
                 "finalizó correctamente.\n\n"
-                f"Periodo: "
-                f"{self.selector_mes.currentText()} "
-                f"{anio}\n"
+                f"Periodo: {mes} {anio}\n"
                 f"Registros procesados: {cantidad}"
             )
 
@@ -512,15 +517,106 @@ class PaginaAsistencia(QWidget):
                 fila
             )
 
+            # ----------------------------------
+            # FECHA
+            # ----------------------------------
+
+            fecha = registro.get(
+                "fecha"
+            )
+
+            if fecha is not None:
+
+                if hasattr(fecha, "strftime"):
+
+                    texto_fecha = fecha.strftime(
+                        "%d/%m/%Y"
+                    )
+
+                else:
+
+                    texto_fecha = str(fecha)
+
+            else:
+
+                texto_fecha = ""
+
+            # ----------------------------------
+            # ENTRADA
+            # ----------------------------------
+
+            hora_entrada = registro.get(
+                "hora_entrada"
+            )
+
+            if hora_entrada is not None:
+
+                if hasattr(hora_entrada, "strftime"):
+
+                    texto_entrada = (
+                        hora_entrada.strftime("%H:%M")
+                    )
+
+                else:
+
+                    texto_entrada = str(
+                        hora_entrada
+                    )
+
+            else:
+
+                texto_entrada = "-"
+
+            # ----------------------------------
+            # SALIDA
+            # ----------------------------------
+
+            hora_salida = registro.get(
+                "hora_salida"
+            )
+
+            if hora_salida is not None:
+
+                if hasattr(hora_salida, "strftime"):
+
+                    texto_salida = (
+                        hora_salida.strftime("%H:%M")
+                    )
+
+                else:
+
+                    texto_salida = str(
+                        hora_salida
+                    )
+
+            else:
+
+                texto_salida = "-"
+
             valores = [
-                registro.get("fecha"),
-                registro.get("id_usuario"),
-                registro.get("nombre"),
-                registro.get("apellido"),
-                registro.get("hora_entrada"),
-                registro.get("hora_salida"),
-                registro.get("estado"),
-                registro.get("observaciones")
+                texto_fecha,
+                registro.get(
+                    "id_usuario",
+                    ""
+                ),
+                registro.get(
+                    "nombre",
+                    ""
+                ),
+                registro.get(
+                    "apellido",
+                    ""
+                ),
+                texto_entrada,
+                texto_salida,
+                registro.get(
+                    "estado",
+                    ""
+                ),
+                registro.get(
+                    "observaciones",
+                    ""
+                )
             ]
 
             for columna, valor in enumerate(
@@ -535,26 +631,15 @@ class PaginaAsistencia(QWidget):
 
                     texto = str(valor)
 
-                # ----------------------------------
-                # MOSTRAR SOLAMENTE LA HORA
-                # ----------------------------------
-
-                if columna in (4, 5):
-
-                    if " " in texto:
-
-                        texto = texto.split(
-                            " ",
-                            1
-                        )[1]
-
                 item = QTableWidgetItem(
                     texto
                 )
 
-                item.setTextAlignment(
-                    Qt.AlignCenter
-                )
+                if columna in (0, 1, 4, 5, 6):
+
+                    item.setTextAlignment(
+                        Qt.AlignCenter
+                    )
 
                 self.tabla.setItem(
                     fila,

@@ -81,7 +81,9 @@ class FuenteMySQL(FuenteDatos):
         if not self.esta_disponible():
             return []
 
-        cursor = self.conexion.cursor(dictionary=True)
+        cursor = self.conexion.cursor(
+            dictionary=True
+        )
 
         try:
 
@@ -92,6 +94,8 @@ class FuenteMySQL(FuenteDatos):
                     nombre,
                     apellido,
                     numero_tarjeta,
+                    fecha_ingreso,
+                    fecha_cese,
                     estado
                 FROM empleados
                 ORDER BY apellido, nombre
@@ -112,7 +116,9 @@ class FuenteMySQL(FuenteDatos):
         nombre,
         apellido,
         numero_tarjeta,
-        estado
+        estado=True,
+        fecha_ingreso=None,
+        fecha_cese=None
     ):
 
         if not self.esta_disponible():
@@ -124,22 +130,33 @@ class FuenteMySQL(FuenteDatos):
 
         try:
 
-            cursor.execute("""
+            consulta = """
                 INSERT INTO empleados (
                     id_usuario,
                     nombre,
                     apellido,
                     numero_tarjeta,
+                    fecha_ingreso,
+                    fecha_cese,
                     estado
                 )
-                VALUES (%s, %s, %s, %s, %s)
-            """, (
-                id_usuario,
-                nombre,
-                apellido,
-                numero_tarjeta,
-                estado
-            ))
+                VALUES (
+                    %s, %s, %s, %s, %s, %s, %s
+                )
+            """
+
+            cursor.execute(
+                consulta,
+                (
+                    id_usuario,
+                    nombre,
+                    apellido,
+                    numero_tarjeta,
+                    fecha_ingreso,
+                    fecha_cese,
+                    estado
+                )
+            )
 
             self.conexion.commit()
 
@@ -162,7 +179,9 @@ class FuenteMySQL(FuenteDatos):
         nombre,
         apellido,
         numero_tarjeta,
-        estado
+        estado=True,
+        fecha_ingreso=None,
+        fecha_cese=None
     ):
 
         if not self.esta_disponible():
@@ -174,23 +193,32 @@ class FuenteMySQL(FuenteDatos):
 
         try:
 
-            cursor.execute("""
+            consulta = """
                 UPDATE empleados
                 SET
                     id_usuario = %s,
                     nombre = %s,
                     apellido = %s,
                     numero_tarjeta = %s,
+                    fecha_ingreso = %s,
+                    fecha_cese = %s,
                     estado = %s
                 WHERE id_usuario = %s
-            """, (
-                id_usuario,
-                nombre,
-                apellido,
-                numero_tarjeta,
-                estado,
-                id_usuario_original
-            ))
+            """
+
+            cursor.execute(
+                consulta,
+                (
+                    id_usuario,
+                    nombre,
+                    apellido,
+                    numero_tarjeta,
+                    fecha_ingreso,
+                    fecha_cese,
+                    estado,
+                    id_usuario_original
+                )
+            )
 
             self.conexion.commit()
 
@@ -238,14 +266,17 @@ class FuenteMySQL(FuenteDatos):
     # ==========================================
 
     def obtener_asistencia(
-    self,
-    fecha_inicio=None,
-    fecha_fin=None):
-        
+        self,
+        fecha_inicio=None,
+        fecha_fin=None
+    ):
+
         if not self.esta_disponible():
             return []
 
-        cursor = self.conexion.cursor(dictionary=True)
+        cursor = self.conexion.cursor(
+            dictionary=True
+        )
 
         try:
 
@@ -311,45 +342,54 @@ class FuenteMySQL(FuenteDatos):
             return cursor.fetchall()
 
         finally:
-
             cursor.close()
+
     # ==========================================
     # OBTENER MARCACIONES
     # ==========================================
 
     def obtener_marcaciones(
-    self,
-    fecha_inicio=None,
-    fecha_fin=None
-):
+        self,
+        fecha_inicio=None,
+        fecha_fin=None
+    ):
+
         if not self.esta_disponible():
             return []
 
-        cursor = self.conexion.cursor(dictionary=True)
+        cursor = self.conexion.cursor(
+            dictionary=True
+        )
 
         try:
 
             consulta = """
                 SELECT
-                    id,
-                    empleado_id,
-                    fecha_hora,
-                    dispositivo,
-                    verificacion,
-                    estado,
-                    evento,
-                    notas
-                FROM marcaciones
+                    m.id,
+                    m.empleado_id,
+                    m.fecha_hora,
+                    m.dispositivo,
+                    m.verificacion,
+                    m.estado,
+                    m.evento,
+                    m.notas,
+                    e.id_usuario,
+                    e.nombre,
+                    e.apellido,
+                    e.fecha_ingreso,
+                    e.fecha_cese
+                FROM marcaciones m
+                INNER JOIN empleados e
+                    ON m.empleado_id = e.id
             """
 
-            parametros = []
-
             condiciones = []
+            parametros = []
 
             if fecha_inicio is not None:
 
                 condiciones.append(
-                    "fecha_hora >= %s"
+                    "m.fecha_hora >= %s"
                 )
 
                 parametros.append(
@@ -359,7 +399,7 @@ class FuenteMySQL(FuenteDatos):
             if fecha_fin is not None:
 
                 condiciones.append(
-                    "fecha_hora < %s"
+                    "m.fecha_hora < %s"
                 )
 
                 parametros.append(
@@ -376,8 +416,8 @@ class FuenteMySQL(FuenteDatos):
 
             consulta += """
                 ORDER BY
-                    empleado_id,
-                    fecha_hora
+                    m.empleado_id,
+                    m.fecha_hora
             """
 
             cursor.execute(
@@ -388,13 +428,16 @@ class FuenteMySQL(FuenteDatos):
             return cursor.fetchall()
 
         finally:
-
             cursor.close()
+
     # ==========================================
     # GUARDAR ASISTENCIA DIARIA
     # ==========================================
 
-    def guardar_asistencia_diaria(self, registros):
+    def guardar_asistencia_diaria(
+        self,
+        registros
+    ):
 
         if not self.esta_disponible():
             raise Exception(
@@ -443,6 +486,289 @@ class FuenteMySQL(FuenteDatos):
             self.conexion.commit()
 
             return cantidad
+
+        except Exception:
+
+            self.conexion.rollback()
+            raise
+
+        finally:
+            cursor.close()
+
+    # ==========================================
+    # OBTENER CALENDARIO LABORAL
+    # ==========================================
+
+    def obtener_calendario_laboral(
+        self,
+        fecha_inicio=None,
+        fecha_fin=None
+    ):
+
+        if not self.esta_disponible():
+            return []
+
+        cursor = self.conexion.cursor(
+            dictionary=True
+        )
+
+        try:
+
+            consulta = """
+                SELECT
+                    id,
+                    fecha,
+                    tipo_dia,
+                    descripcion,
+                    es_laborable
+                FROM calendario_laboral
+            """
+
+            condiciones = []
+            parametros = []
+
+            if fecha_inicio is not None:
+
+                condiciones.append(
+                    "fecha >= %s"
+                )
+
+                parametros.append(
+                    fecha_inicio
+                )
+
+            if fecha_fin is not None:
+
+                condiciones.append(
+                    "fecha < %s"
+                )
+
+                parametros.append(
+                    fecha_fin
+                )
+
+            if condiciones:
+
+                consulta += " WHERE "
+
+                consulta += " AND ".join(
+                    condiciones
+                )
+
+            consulta += """
+                ORDER BY fecha
+            """
+
+            cursor.execute(
+                consulta,
+                parametros
+            )
+
+            return cursor.fetchall()
+
+        finally:
+            cursor.close()
+
+    # ==========================================
+    # OBTENER TIPOS DE PERMISOS
+    # ==========================================
+
+    def obtener_tipos_permisos(
+        self,
+        solo_activos=True
+    ):
+
+        if not self.esta_disponible():
+            return []
+
+        cursor = self.conexion.cursor(
+            dictionary=True
+        )
+
+        try:
+
+            consulta = """
+                SELECT
+                    id,
+                    codigo,
+                    nombre,
+                    descripcion,
+                    afecta_asistencia,
+                    requiere_aprobacion,
+                    remunerado,
+                    activo
+                FROM tipos_permisos
+            """
+
+            parametros = []
+
+            if solo_activos:
+
+                consulta += """
+                    WHERE activo = TRUE
+                """
+
+            consulta += """
+                ORDER BY nombre
+            """
+
+            cursor.execute(
+                consulta,
+                parametros
+            )
+
+            return cursor.fetchall()
+
+        finally:
+            cursor.close()
+
+    # ==========================================
+    # CREAR TIPO DE PERMISO
+    # ==========================================
+
+    def crear_tipo_permiso(
+        self,
+        codigo,
+        nombre,
+        descripcion=None,
+        afecta_asistencia=True,
+        requiere_aprobacion=True,
+        remunerado=True
+    ):
+
+        if not self.esta_disponible():
+            raise Exception(
+                "La fuente de datos no está disponible."
+            )
+
+        cursor = self.conexion.cursor()
+
+        try:
+
+            consulta = """
+                INSERT INTO tipos_permisos (
+                    codigo,
+                    nombre,
+                    descripcion,
+                    afecta_asistencia,
+                    requiere_aprobacion,
+                    remunerado,
+                    activo
+                )
+                VALUES (
+                    %s, %s, %s, %s, %s, %s, TRUE
+                )
+            """
+
+            cursor.execute(
+                consulta,
+                (
+                    codigo,
+                    nombre,
+                    descripcion,
+                    afecta_asistencia,
+                    requiere_aprobacion,
+                    remunerado
+                )
+            )
+
+            self.conexion.commit()
+
+        except Exception:
+
+            self.conexion.rollback()
+            raise
+
+        finally:
+            cursor.close()
+
+    # ==========================================
+    # ACTUALIZAR TIPO DE PERMISO
+    # ==========================================
+
+    def actualizar_tipo_permiso(
+        self,
+        id_tipo_permiso,
+        codigo,
+        nombre,
+        descripcion=None,
+        afecta_asistencia=True,
+        requiere_aprobacion=True,
+        remunerado=True
+    ):
+
+        if not self.esta_disponible():
+            raise Exception(
+                "La fuente de datos no está disponible."
+            )
+
+        cursor = self.conexion.cursor()
+
+        try:
+
+            consulta = """
+                UPDATE tipos_permisos
+                SET
+                    codigo = %s,
+                    nombre = %s,
+                    descripcion = %s,
+                    afecta_asistencia = %s,
+                    requiere_aprobacion = %s,
+                    remunerado = %s
+                WHERE id = %s
+            """
+
+            cursor.execute(
+                consulta,
+                (
+                    codigo,
+                    nombre,
+                    descripcion,
+                    afecta_asistencia,
+                    requiere_aprobacion,
+                    remunerado,
+                    id_tipo_permiso
+                )
+            )
+
+            self.conexion.commit()
+
+        except Exception:
+
+            self.conexion.rollback()
+            raise
+
+        finally:
+            cursor.close()
+
+    # ==========================================
+    # DESACTIVAR TIPO DE PERMISO
+    # ==========================================
+
+    def desactivar_tipo_permiso(
+        self,
+        id_tipo_permiso
+    ):
+
+        if not self.esta_disponible():
+            raise Exception(
+                "La fuente de datos no está disponible."
+            )
+
+        cursor = self.conexion.cursor()
+
+        try:
+
+            cursor.execute(
+                """
+                UPDATE tipos_permisos
+                SET activo = FALSE
+                WHERE id = %s
+                """,
+                (id_tipo_permiso,)
+            )
+
+            self.conexion.commit()
 
         except Exception:
 

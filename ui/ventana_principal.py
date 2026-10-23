@@ -23,19 +23,28 @@ from ui.configuracion import PaginaConfiguracion
 
 class VentanaPrincipal(QMainWindow):
 
-    def __init__(
-        self,
-        gestor_fuentes=None,
-        gestor_configuracion=None
-    ):
+    def __init__(self, gestor_fuentes, gestor_configuracion):
+
+        print("VP 1: entrando a VentanaPrincipal")
+
         super().__init__()
 
-        # ==========================================================
-        # GESTORES
-        # ==========================================================
+        print("VP 2: super() terminado")
 
         self.gestor_fuentes = gestor_fuentes
         self.gestor_configuracion = gestor_configuracion
+
+        print("VP 3: gestores asignados")
+
+        self.construir_interfaz()
+
+        print("VP 4: interfaz construida")
+
+    # ==========================================================
+    # CONSTRUIR INTERFAZ
+    # ==========================================================
+
+    def construir_interfaz(self):
 
         # ==========================================================
         # CONFIGURACIÓN DE LA VENTANA
@@ -54,9 +63,13 @@ class VentanaPrincipal(QMainWindow):
         # ==========================================================
 
         contenedor = QWidget()
-        self.setCentralWidget(contenedor)
+
+        self.setCentralWidget(
+            contenedor
+        )
 
         layout_principal = QHBoxLayout()
+
         layout_principal.setContentsMargins(
             0,
             0,
@@ -73,8 +86,14 @@ class VentanaPrincipal(QMainWindow):
         # ==========================================================
 
         menu = QWidget()
-        menu.setObjectName("menu")
-        menu.setFixedWidth(230)
+
+        menu.setObjectName(
+            "menu"
+        )
+
+        menu.setFixedWidth(
+            230
+        )
 
         layout_menu = QVBoxLayout()
 
@@ -88,6 +107,10 @@ class VentanaPrincipal(QMainWindow):
         menu.setLayout(
             layout_menu
         )
+
+        # ==========================================================
+        # TÍTULO DEL MENÚ
+        # ==========================================================
 
         titulo = QLabel(
             CONFIGURACION["empresa"]["nombre_corto"]
@@ -105,10 +128,17 @@ class VentanaPrincipal(QMainWindow):
             "subtitulo"
         )
 
-        layout_menu.addWidget(titulo)
-        layout_menu.addWidget(subtitulo)
+        layout_menu.addWidget(
+            titulo
+        )
 
-        layout_menu.addSpacing(30)
+        layout_menu.addWidget(
+            subtitulo
+        )
+
+        layout_menu.addSpacing(
+            30
+        )
 
         # ==========================================================
         # BOTONES DEL MENÚ
@@ -201,9 +231,17 @@ class VentanaPrincipal(QMainWindow):
         # PÁGINAS
         # ==========================================================
 
+        # ----------------------------------------------------------
+        # INICIO
+        # ----------------------------------------------------------
+
         self.pagina_inicio = PaginaInicio(
             self.ir_a_pagina
         )
+
+        # ----------------------------------------------------------
+        # IMPORTACIÓN
+        # ----------------------------------------------------------
 
         self.pagina_importar = PaginaImportacion()
 
@@ -224,21 +262,41 @@ class VentanaPrincipal(QMainWindow):
             self.gestor_configuracion
         )
 
+        # ----------------------------------------------------------
+        # INCIDENCIAS
+        # ----------------------------------------------------------
+
         self.pagina_incidencias = PaginaIncidencias()
 
+        # ----------------------------------------------------------
+        # PERMISOS
+        # ----------------------------------------------------------
+
         self.pagina_permisos = PaginaPermisos()
+
+        # ----------------------------------------------------------
+        # REMUNERACIONES
+        # ----------------------------------------------------------
 
         self.pagina_remuneraciones = (
             PaginaRemuneraciones()
         )
 
+        # ----------------------------------------------------------
+        # REPORTES
+        # ----------------------------------------------------------
+
         self.pagina_reportes = (
             PaginaReportes()
         )
 
+        # ----------------------------------------------------------
+        # CONFIGURACIÓN
+        # ----------------------------------------------------------
+
         self.pagina_configuracion = PaginaConfiguracion(
-        self.gestor_fuentes,
-        self.gestor_configuracion
+            self.gestor_fuentes,
+            self.gestor_configuracion
         )
 
         # ==========================================================

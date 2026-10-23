@@ -13,34 +13,19 @@ app = QApplication(sys.argv)
 
 app.setStyleSheet(ESTILO_APLICACION)
 
-
-# ==========================================
-# CARGAR CONFIGURACIÓN GUARDADA
-# ==========================================
-
 gestor_configuracion = GestorConfiguracion()
-
 configuracion = gestor_configuracion.cargar()
 
-
-# ==========================================
-# CONFIGURAR FUENTE DE DATOS
-# ==========================================
-
 gestor_fuentes = GestorFuentes()
-
 gestor_fuentes.cargar_desde_configuracion(configuracion)
 
-
-# ==========================================
-# CONECTAR AUTOMÁTICAMENTE
-# ==========================================
 
 if gestor_fuentes.fuente_actual:
 
     if gestor_fuentes.conectar():
 
         print("CONEXION EXITOSA")
+        print("PASO 1: conexión lista")
 
     else:
 
@@ -52,20 +37,51 @@ else:
     print("NO HAY FUENTE DE DATOS CONFIGURADA")
 
 
-# ==========================================
-# ABRIR VENTANA PRINCIPAL
-# ==========================================
+print("PASO 2: intentando crear VentanaPrincipal")
 
-ventana = VentanaPrincipal(
-    gestor_fuentes,
-    gestor_configuracion
-)
+try:
 
-ventana.show()
+    ventana = VentanaPrincipal(
+        gestor_fuentes,
+        gestor_configuracion
+    )
+
+    print("PASO 3: VentanaPrincipal creada")
+
+except Exception as error:
+
+    print("ERROR AL CREAR VENTANAPRINCIPAL")
+    print(type(error).__name__)
+    print(str(error))
+
+    import traceback
+    traceback.print_exc()
+
+    input("\nPresiona ENTER para cerrar...")
+    sys.exit(1)
 
 
-# ==========================================
-# INICIAR APLICACIÓN
-# ==========================================
+print("PASO 4: intentando mostrar ventana")
+
+try:
+
+    ventana.show()
+
+    print("PASO 5: ventana mostrada")
+
+except Exception as error:
+
+    print("ERROR AL MOSTRAR LA VENTANA")
+    print(type(error).__name__)
+    print(str(error))
+
+    import traceback
+    traceback.print_exc()
+
+    input("\nPresiona ENTER para cerrar...")
+    sys.exit(1)
+
+
+print("PASO 6: iniciando QApplication")
 
 sys.exit(app.exec())
