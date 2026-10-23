@@ -1,9 +1,21 @@
 
 from database.connection import obtener_conexion
 from importacion.hash_marcacion import generar_hash_marcacion
+from importacion.validacion_marcaciones import validar_dataframe
 
 
 def importar_dataframe(df):
+    validacion = validar_dataframe(df)
+
+    if not validacion["ok"]:
+        return {
+            "ok": False,
+            "error": "\n".join(validacion["errores"]),
+            "empleados": 0,
+            "marcaciones": 0,
+            "duplicadas": 0
+        }
+
     conexion = None
     cursor = None
 
