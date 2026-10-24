@@ -1,80 +1,71 @@
+import unittest
+from unittest.mock import patch
 
 import pandas as pd
 
+from importacion.database_importer import importar_dataframe
 from importacion.excel_reader import COLUMNAS_REQUERIDAS
 
 
-CAMPOS_OBLIGATORIOS = [
-    "ID usuario",
-    "Nombre",
-    "Apellido",
-    "Fecha y tiempo",
-]
+def crear_dataframe_valido():
+    return pd.DataFrame([{
+        "Fecha y tiempo": "2026-09-01 08:00:00",
+        "ID usuario": "001",
+        "Nombre": "Juan",
+        "Apellido": "Pérez",
+        "Número de tarjeta": "123",
+        "Dispositivo": "Biométrico 01",
+        "Verificación": "Huella",
+        "Estado": "Entrada",
+        "Evento": "Marcación",
+        "Notas": "",
+    }], columns=COLUMNAS_REQUERIDAS)
 
 
-def validar_dataframe(df):
-    if df is None:
-        return {
-            "ok": False,
-            "errores": ["No se recibieron datos para validar."],
-        }
+class TestImportadorSinMySQL(unittest.TestCase):
 
-    columnas_faltantes = [
-        columna
-        for columna in COLUMNAS_REQUERIDAS
-        if columna not in df.columns
-    ]
+    @patch("importacion.database_importer.obtener_conexion")
+    def test_rechaza_id_vacio_sin_conectarse(self, obtener_conexion):
+        df = crear_dataframe_valido()
+        df.loc[0, "ID usuario"] = ""
 
-    if columnas_faltantes:
-        return {
-            "ok": False,
-            "errores": [
-                "Faltan columnas: " + ", ".join(columnas_faltantes)
-            ],
-        }
+        resultado = importar_dataframe(df)
 
-    if df.empty:
-        return {
-            "ok": False,
-            "errores": ["El archivo no contiene marcaciones."],
-        }
+        self.assertFalse(resultado["ok"])
+        self.assertIn("ID usuario", resultado["error"])
+        obtener_conexion.assert_not_called()
 
-    # Eliminar filas completamente vacías
-    datos = df.dropna(how="all").copy()
+    @patch("importacion.database_importer.obtener_conexion")
+    def test_rechaza_fecha_invalida_sin_conectarse(self, obtener_conexion):
+        df = crear_dataframe_valido()
+        df.loc[0, "Fecha y tiempo"] = "fecha incorrecta"
 
-    if datos.empty:
-        return {
-            "ok": False,
-            "errores": ["El archivo solo contiene filas vacías."],
-        }
+        resultado = importar_dataframe(df)
 
-    errores = []
+        self.assertFalse(resultado["ok"])
+        self.assertIn("fecha(s) inválida(s)", resultado["error"])
+        obtener_conexion.assert_not_called()
 
-    for campo in CAMPOS_OBLIGATORIOS:
-        vacios = datos[campo].isna() | (
-            datos[campo].astype(str).str.strip() == ""
-        )
+    @patch("importacion.database_importer.obtener_conexion")
+    def test_rechaza_dataframe_vacio_sin_conectarse(self, obtener_conexion):
+        df = pd.DataFrame(columns=COLUMNAS_REQUERIDAS)
 
-        if vacios.any():
-            errores.append(
-                f"El campo '{campo}' está vacío en "
-                f"{int(vacios.sum())} fila(s)."
-            )
+        resultado = importar_dataframe(df)
 
-    fechas = pd.to_datetime(
-        datos["Fecha y tiempo"],
-        errors="coerce",
-    )
+        self.assertFalse(resultado["ok"])
+        self.assertIn("no contiene marcaciones", resultado["error"])
+        obtener_conexion.assert_not_called()
 
-    fechas_invalidas = fechas.isna()
+    @patch("importacion.database_importer.obtener_conexion")
+    def test_rechaza_columnas_faltantes_sin_conectarse(self, obtener_conexion):
+        df = crear_dataframe_valido().drop(columns=["ID usuario"])
 
-    if fechas_invalidas.any():
-        errores.append(
-            f"Hay {int(fechas_invalidas.sum())} fecha(s) inválida(s)."
-        )
+        resultado = importar_dataframe(df)
 
-    return {
-        "ok": not errores,
-        "errores": errores,
-        "datos": datos,
-    }
+        self.assertFalse(resultado["ok"])
+        self.assertIn("ID usuario", resultado["error"])
+        obtener_conexion.assert_not_called()
+
+
+if __name__ == "__main__":
+    unittest.main()
